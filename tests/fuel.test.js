@@ -179,3 +179,51 @@ test('opening fuel budget requires lowering engines in the first thirty seconds'
  }
  assert.ok(saving.fuel>15);
 });
+
+
+test('the opening station appears ahead at forty seconds, within a six-second approach, only once',()=>{
+ const ship={x:400,y:120,z:-70};
+ for(let seed=0;seed<100;seed++){
+  let body=spawnAsteroid(7,seed);
+  body=advanceFlyby(body,0,ship,1,39.99);assert.equal(body.kind,'asteroid');
+  const station=advanceFlyby(body,0,ship,1,40);
+  assert.equal(station.kind,'station');assert.equal(station.openingStationSpawned,true);
+  assert.equal(station.x-ship.x,72);
+  assert.ok(Math.abs(Math.hypot(station.y-ship.y,station.z-ship.z)-8)<1e-8);
+  const approaching=advanceFlyby(station,6*1.5,ship,1,46);
+  assert.equal(approaching.generation,station.generation);
+  assert.ok(Math.hypot(approaching.x-ship.x,approaching.y-ship.y,approaching.z-ship.z)<9);
+  const recycled=advanceFlyby({...station,x:-5000},1,origin,1,100);
+  assert.equal(recycled.openingStationSpawned,true);
+  assert.equal(advanceFlyby(recycled,0,ship,1,101).generation,recycled.generation);
+ }
+});
+
+test('an economical opening flight can reach and finish refueling before its tank empties',()=>{
+ for(const seed of [1,7,31,82,133]){
+  const nav=new Navigation(seed),physics=new OrbitalGravity(),journey=new Journey();
+  let body=spawnAsteroid(7,seed),phase=1.05,radius=0;
+  physics.reset(flightRoute(phase,radius),origin);
+  let completedAt=null,minimumFuel=100;
+  for(let frame=1;frame<=70*60;frame++){
+   const dt=1/60,step=dt*1.5,time=frame*dt;
+   if(time>=10)radius=5.6+(radius-5.6)*Math.exp(-.3*dt);
+   phase+=step*.45;
+   // Isolate the opening station from unrelated asteroid derailments.
+   let sources=body.kind==='station'?activeBodies([body],nav):[];
+   nav.advance(step,physics.position,physics.velocity,sources,0,radius,dt);
+   minimumFuel=Math.min(minimumFuel,nav.fuel);
+   const previous=journey.rate;
+   const travel=journey.advance(step,physics.position,physics.velocity,sources,0,radius,nav);
+   physics.velocity.x+=8*(previous-journey.rate);
+   body=advanceFlyby(body,travel,physics.position,journey.rate,time);
+   sources=body.kind==='station'?activeBodies([body],nav):[];
+   const orbit=journey.orbit&&sources.length?{body,normal:journey.orbit.normal}:null;
+   physics.advance(step,flightRoute(phase,radius),sources,0,radius,orbit,{phase,radius,dual:0},nav);
+   if(nav.consumedStations.length){completedAt=time;break;}
+  }
+  assert.ok(completedAt>=50&&completedAt<65,`seed ${seed}: completion ${completedAt}`);
+  assert.ok(minimumFuel>20,`seed ${seed}: fuel ${minimumFuel}`);
+  assert.equal(nav.fuel,100);
+ }
+});

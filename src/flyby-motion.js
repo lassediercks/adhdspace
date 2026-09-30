@@ -1,5 +1,5 @@
 export const ASTEROID_COUNT=20;
-export const STATION_START_SECONDS=180;
+export const STATION_START_SECONDS=40;
 
 // Equal-density spherical mass approximation: twice the radius gives 8× mass.
 export function asteroidMass(radius) {
@@ -27,7 +27,7 @@ export function spawnAsteroid(id, seed, generation=0,flightSeconds=0) {
   const radius=distant?2+random()*7:.65+Math.pow(random(),1.35)*5.8;
   const angle=random()*Math.PI*2;
   // Uniform area sampling: sqrt avoids concentrating rocks along the axis.
-  // No reserved beam blockers, central exclusion, or scripted opening encounters.
+  // Asteroids have no reserved beam blockers or central exclusion.
   const extent=distant?Math.abs(x)*1.5:40;
   const radial=Math.sqrt(random())*extent;
   const y=Math.cos(angle)*radial,z=Math.sin(angle)*radial;
@@ -52,12 +52,20 @@ export function spawnAsteroid(id, seed, generation=0,flightSeconds=0) {
 }
 
 export function advanceFlyby(body, dt, shipPosition, progressRate, flightSeconds=0) {
+  // One opening station is timed and placed within approach range. Subsequent
+  // stations keep the random field distribution. Shared with the forecast.
+  if(body.id===7&&body.seed!==undefined&&!body.openingStationSpawned&&flightSeconds>=STATION_START_SECONDS){
+    const station=spawnAsteroid(body.id,body.seed,body.generation+1,flightSeconds);
+    const angle=station.geometrySeed;
+    return {...station,x:shipPosition.x+72,y:shipPosition.y+8*Math.cos(angle),z:shipPosition.z+8*Math.sin(angle),
+      vx:-8*progressRate,openingStationSpawned:true};
+  }
   let next={...body,x:body.x-dt*8,vx:-8*progressRate};
   const distance=Math.hypot(next.x-shipPosition.x,next.y-shipPosition.y,next.z-shipPosition.z);
   if(dt>0&&next.x<-(body.recycleBehind??84)&&distance>(body.seed===undefined?140:350)) {
     next=body.seed===undefined
       ? {...next,x:next.x+(body.recycleSpan??360),generation:(body.generation??0)+1}
-      : {...spawnAsteroid(body.id,body.seed,body.generation+1,flightSeconds),vx:-8*progressRate};
+      : {...spawnAsteroid(body.id,body.seed,body.generation+1,flightSeconds),vx:-8*progressRate,openingStationSpawned:body.openingStationSpawned};
   }
   return next;
 }
