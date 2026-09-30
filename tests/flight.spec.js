@@ -43,11 +43,11 @@ test('mobile controls and the right-hand weather indicator fit the viewport',asy
 test('refresh and restored form values stay synchronized with coherence defaults',async({page})=>{
  await seedField(page);await page.goto('http://127.0.0.1:5173');
  const coherence=page.getByRole('slider',{name:'Stabilizer engines',exact:true});await coherence.fill('100');
- await page.reload();await expect(coherence).toHaveValue('43');
- await expect(page.locator('#coherence-output')).toHaveText('43%');
- expect(await coherence.evaluate(el=>el.style.getPropertyValue('--fill'))).toBe('43%');
+ await page.reload();await expect(coherence).toHaveValue('100');
+ await expect(page.locator('#coherence-output')).toHaveText('100%');
+ expect(await coherence.evaluate(el=>el.style.getPropertyValue('--fill'))).toBe('100%');
  await page.evaluate(()=>{document.getElementById('coherence').value='91';window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));});
- await expect(coherence).toHaveValue('43');
+ await expect(coherence).toHaveValue('100');
 });
 
 test('a real seeded lock loss enables rescue and the burn recovers control',async({page})=>{

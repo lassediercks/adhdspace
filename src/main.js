@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const $ = (id) => document.getElementById(id);
-const DEFAULT_FLIGHT = Object.freeze({speed:1.5,coherence:43,radius:7*(1-43/100),phase:1.05,elapsed:0,beamCount:1});
+const DEFAULT_FLIGHT = Object.freeze({speed:1.5,coherence:100,radius:0,phase:1.05,elapsed:0,beamCount:1});
 const state = {playing:true,...DEFAULT_FLIGHT};
 let renderer;
 try {
@@ -122,7 +122,7 @@ function animate(){
  const journeyStep=journey.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius,navigation);
  // Moving into/out of the local body frame preserves relative velocity.
  gravity.velocity.x+=8*(previousRate-journey.rate);
- const sources = asteroids.update(journeyStep, ship.position, journey.rate, step, navigation.consumedStations);
+ const sources = asteroids.update(journeyStep, ship.position, journey.rate, step, navigation.consumedStations, state.elapsed/state.speed);
  const beamObstacles=asteroids.asteroids.filter(body=>body.group.visible).map(body=>body.outline);
  const centers=network.centers(journey.distance);
  beams.forEach((beam,index)=>{

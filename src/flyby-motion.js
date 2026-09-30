@@ -1,4 +1,5 @@
 export const ASTEROID_COUNT=20;
+export const STATION_START_SECONDS=180;
 
 // Equal-density spherical mass approximation: twice the radius gives 8× mass.
 export function asteroidMass(radius) {
@@ -17,7 +18,7 @@ function randomSource(seed) {
 
 // Per-body seeded randomness makes an unpredictable field reproducible inside
 // the forecast, without allowing a preview to consume the live random stream.
-export function spawnAsteroid(id, seed, generation=0) {
+export function spawnAsteroid(id, seed, generation=0,flightSeconds=0) {
   const random=randomSource((seed^Math.imul(id+1,0x9E3779B1)^Math.imul(generation+1,0x85EBCA6B))>>>0);
   const distant=id>=8;
   const x=generation===0
@@ -40,7 +41,8 @@ export function spawnAsteroid(id, seed, generation=0) {
   };
   // Keep one nearby station slot, with extra stations occurring randomly.
   // Their positions use the same unbiased field sampling as the rocks.
-  body.kind=!distant&&(id===7||random()<.12)?'station':'asteroid';
+  const stationCandidate=!distant&&(id===7||random()<.12);
+  body.kind=flightSeconds>=STATION_START_SECONDS&&stationCandidate?'station':'asteroid';
   if(body.kind==='station') {
     body.radius=Math.max(2.5,body.radius);body.mass=asteroidMass(body.radius);
     body.avoidanceRadius=body.radius*1.025;body.colors=['#6bbcff'];
@@ -49,13 +51,13 @@ export function spawnAsteroid(id, seed, generation=0) {
   return body;
 }
 
-export function advanceFlyby(body, dt, shipPosition, progressRate) {
+export function advanceFlyby(body, dt, shipPosition, progressRate, flightSeconds=0) {
   let next={...body,x:body.x-dt*8,vx:-8*progressRate};
   const distance=Math.hypot(next.x-shipPosition.x,next.y-shipPosition.y,next.z-shipPosition.z);
   if(dt>0&&next.x<-(body.recycleBehind??84)&&distance>(body.seed===undefined?140:350)) {
     next=body.seed===undefined
       ? {...next,x:next.x+(body.recycleSpan??360),generation:(body.generation??0)+1}
-      : {...spawnAsteroid(body.id,body.seed,body.generation+1),vx:-8*progressRate};
+      : {...spawnAsteroid(body.id,body.seed,body.generation+1,flightSeconds),vx:-8*progressRate};
   }
   return next;
 }

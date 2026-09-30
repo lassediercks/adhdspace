@@ -88,11 +88,11 @@ export class PassingAsteroids {
     this.update(0);
   }
 
-  update(dt, shipPosition = {x:0,y:0,z:0}, progressRate = 1, spinDt = dt, consumedStations = []) {
+  update(dt, shipPosition = {x:0,y:0,z:0}, progressRate = 1, spinDt = dt, consumedStations = [], flightSeconds = 0) {
     this.travel+=dt*8;
     this.sources.length=0;
     this.asteroids.forEach(asteroid=>{
-      const source=advanceFlyby(asteroid.definition,dt,shipPosition,progressRate);
+      const source=advanceFlyby(asteroid.definition,dt,shipPosition,progressRate,flightSeconds);
       if(source.generation!==asteroid.definition.generation)this.applySpawn(asteroid,source);
       asteroid.definition=source;
       asteroid.group.position.set(source.x,source.y,source.z);

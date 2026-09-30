@@ -46,7 +46,7 @@ export function predictPath(snapshot, horizon=(snapshot.targetDual ? 30 : FORECA
     const previousRate=journey.rate;
     const travel=journey.advance(FORECAST_STEP,physics.position,physics.velocity,bodies,instability,radius,navigation);
     physics.velocity.x+=8*(previousRate-journey.rate);
-    bodies=bodies.map(body=>advanceFlyby(body,travel,physics.position,journey.rate));
+    bodies=bodies.map(body=>advanceFlyby(body,travel,physics.position,journey.rate,flightSeconds??0));
     const sources=activeBodies(bodies,navigation);
     const body=journey.orbit&&sources.find(body=>body.id===journey.orbit.id);
     const route={phase,radius,dual,network,distance:journey.distance,forwardSpeed:journey.rate*2.8};

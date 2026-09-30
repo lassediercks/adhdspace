@@ -4,7 +4,7 @@ import { Navigation, fuelBurnRate, RESCUE_FUEL, activeBodies } from '../src/navi
 import { Journey } from '../src/journey.js';
 import { OrbitalGravity } from '../src/orbital-gravity.js';
 import { flightRoute } from '../src/flight-route.js';
-import { spawnAsteroid,advanceFlyby } from '../src/flyby-motion.js';
+import { spawnAsteroid,advanceFlyby,STATION_START_SECONDS } from '../src/flyby-motion.js';
 const origin={x:0,y:0,z:0};
 
 test('coherence trades fuel efficiency for stability and rescue spends a fixed reserve',()=>{
@@ -29,9 +29,9 @@ test('station encounters are deliberate at low coherence and charge only deraile
  assert.equal(docking.refueling,true);assert.ok(docking.rescue());
 });
 
-test('every field has a nearby station with randomized placement and correct mass',()=>{
+test('unlocked fields have a nearby station with randomized placement and correct mass',()=>{
  for(let seed=1;seed<=20;seed++) {
-  const station=spawnAsteroid(7,seed);
+  const station=spawnAsteroid(7,seed,1,STATION_START_SECONDS);
   assert.equal(station.kind,'station');assert.ok(Math.hypot(station.y,station.z)>0);
   assert.equal(station.mass,station.radius**3*.12);
  }
@@ -142,4 +142,21 @@ test('completed refueling restores smooth stabilization without carrying old der
  assert.equal(nav.mode,'tracking');assert.ok(nav.lock>.99);
  assert.ok(Math.hypot(physics.position.y,physics.position.z)<.1);
  assert.ok(largestStep<.2);
+});
+
+
+test('full engines exhaust fuel before any stations may spawn; conserving fuel lasts longer',()=>{
+ const full=new Navigation(),economy=new Navigation();
+ full.advance(100/fuelBurnRate(0)+.001,origin,origin,[],0,0);
+ assert.equal(full.fuel,0);
+ assert.ok(100/fuelBurnRate(0)/1.5<STATION_START_SECONDS);
+ economy.advance(STATION_START_SECONDS*1.5,origin,origin,[],0,7);
+ assert.ok(economy.fuel>90);
+ for(let seed=0;seed<20;seed++)for(let id=0;id<20;id++){
+  assert.equal(spawnAsteroid(id,seed).kind,'asteroid');
+  const old={...spawnAsteroid(id,seed),x:-5000};
+  assert.equal(advanceFlyby(old,1,origin,1,STATION_START_SECONDS-.001).kind,'asteroid');
+ }
+ const old={...spawnAsteroid(7,31),x:-5000};
+ assert.equal(advanceFlyby(old,1,origin,1,STATION_START_SECONDS).kind,'station');
 });
