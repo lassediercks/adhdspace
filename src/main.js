@@ -243,7 +243,7 @@ function updateRescueControl(){
  const remaining=Math.ceil(navigation.cooldown);
  const label=navigation.mode==='rescuing'?'Boosting':'Rescue boost';
  button.textContent=remaining>0?`${label} · ${remaining}s`:label;
- button.title=navigation.cooldown>0?`Rescue recharging — ${remaining}s remaining`:navigation.fuel<RESCUE_FUEL?'Refuel at a station — rescue needs 8% fuel':navigation.mode==='derailed'?'Boost back to the primary beam (8% fuel)':'Available when beam lock is lost';
+ button.title=navigation.cooldown>0?`Rescue recharging — ${remaining}s remaining`:navigation.fuel<RESCUE_FUEL?'Refuel at a station — rescue needs 10% fuel':navigation.mode==='derailed'?'Boost back to the primary beam (10% fuel)':'Available when beam lock is lost';
 }
 $('restart-flight').addEventListener('click',()=>window.location.reload());
 $('rescue').addEventListener('click',()=>{

@@ -7,7 +7,7 @@ export const REFUEL_MIN_RADIUS=7*.95;
 export const STATION_DOCKING_MARGIN=22;
 export const stationKey=body=>`${body.id}:${body.generation??0}`;
 export const activeBodies=(bodies,navigation)=>bodies.filter(body=>!navigation?.consumedStations?.includes(stationKey(body)));
-export const RESCUE_FUEL=8;
+export const RESCUE_FUEL=10;
 export const RESCUE_COOLDOWN=30;
 // Fuel is charged in simulation seconds; the game runs at 1.5× real time.
 // A full tank at maximum engine power therefore lasts 30 real seconds.

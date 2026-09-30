@@ -14,7 +14,8 @@ test('coherence trades fuel efficiency for stability and rescue spends a fixed r
  high.advance(20,origin,origin,[],0,0);low.advance(20,origin,origin,[],0,7);
  assert.ok(high.fuel<low.fuel);
  high.mode='derailed';const before=high.fuel;assert.ok(high.rescue());
- assert.equal(high.fuel,before-RESCUE_FUEL);
+ assert.equal(RESCUE_FUEL,10);
+ assert.equal(high.fuel,before-10);
  high.mode='derailed';high.fuel=RESCUE_FUEL-.01;assert.equal(high.rescue(),false);
 });
 
