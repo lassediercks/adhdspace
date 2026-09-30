@@ -1,8 +1,12 @@
-// A seeded mean-reverting process has a bell-shaped distribution around 50%.
+// Live weather draws fresh cryptographic randomness; explicit seeds are for tests.
+// A mean-reverting process has a bell-shaped distribution around 50%.
 // Rare pulses hold either extreme; the actual field eases toward every target.
+export const instabilityLevel=value=>value>.8?'high':value>.6?'elevated':'normal';
+
 export class SpaceWeather {
- constructor(seed=1) { this.randomState=seed>>>0;this.value=.5;this.target=.5;this.clock=0;this.pulseTime=0;this.pulseTarget=.5; }
+ constructor(seed) { this.randomState=seed===undefined?null:seed>>>0;this.value=.5;this.target=.5;this.clock=0;this.pulseTime=0;this.pulseTarget=.5; }
  random() {
+  if(this.randomState===null)return (crypto.getRandomValues(new Uint32Array(1))[0]+.5)/4294967296;
   this.randomState=(this.randomState+0x6D2B79F5)>>>0;
   let v=Math.imul(this.randomState^(this.randomState>>>15),1|this.randomState);
   v^=v+Math.imul(v^(v>>>7),61|v);
@@ -10,7 +14,7 @@ export class SpaceWeather {
  }
  restore(snapshot) { if(snapshot)Object.assign(this,snapshot); }
  advance(seconds) {
-  // Fixed weather ticks make the worker preview reproduce live random events.
+  // Fixed ticks keep the live process independent of rendering frame rate.
   this.clock+=seconds;
   while(this.clock>=.1-1e-10) {
    this.clock-=.1;

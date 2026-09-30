@@ -1,3 +1,4 @@
+import { instabilityLevel } from './space-weather.js';
 import * as THREE from 'three';
 import { FORECAST_SAMPLE_INTERVAL } from './trajectory-prediction.js';
 
@@ -7,6 +8,7 @@ export class PredictedPath {
     this.line=new THREE.Line(this.geometry,new THREE.LineBasicMaterial({color:0xa3c9e5,vertexColors:true,transparent:true,opacity:.32,depthWrite:false}));
     this.line.frustumCulled=false;
     parent.add(this.line);
+    this.weatherColor=new THREE.Color();
     this.startTime=0;
     this.anchorDistance=0;
     this.pointCount=0;
@@ -67,12 +69,16 @@ export class PredictedPath {
     this.anchorDistance=distance;
   }
 
-  follow(position, distance, elapsed, dt=1/60) {
+  follow(position, distance, elapsed, dt=1/60, instability=0) {
+    const level=instabilityLevel(instability),severity=Math.max(0,(instability-.6)/.4);
+    this.weatherColor.setHex(level==='high'?0xf19a7a:level==='elevated'?0xe6cb70:0xa3c9e5);
+    this.line.material.color.lerp(this.weatherColor,1-Math.exp(-dt*4));
+    this.line.material.opacity=.32+.2*severity;
     if(!this.pointCount)return;
     if(elapsed<this.startTime){this.line.visible=false;return;}
     // Align successive forecasts in time, then ease their geometry instead of
     // snapping the entire future path when a slider target or weather changes.
-    const displayed=this.geometry.attributes.position.array,blend=1-Math.exp(-dt*1.3);
+    const displayed=this.geometry.attributes.position.array,blend=1-Math.exp(-dt*(1.3+severity*3));
     for(let i=0;i<displayed.length;i++)displayed[i]+=(this.targetPositions[i]-displayed[i])*blend;
     const first=Math.min(this.pointCount-1,Math.floor((elapsed-this.startTime)/FORECAST_SAMPLE_INTERVAL));
     this.line.position.x=this.anchorDistance-distance;

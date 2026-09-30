@@ -97,3 +97,24 @@ test('engine consumption eases with the lever and empty fuel shows a central war
  expect(Math.abs(box.x+box.width/2-720)).toBeLessThan(2);
  await page.screenshot({path:'test-results/out-of-fuel.png'});
 });
+
+
+test('live random weather marks elevated yellow and high instability explicitly',async({page})=>{
+ await page.addInitScript(()=>{
+  let calls=0;const original=crypto.getRandomValues.bind(crypto);
+  crypto.getRandomValues=array=>{
+   if(array instanceof Uint32Array&&array.length===1){
+    calls++;array[0]=calls===1?31:calls===2?0:0xffffffff;return array;
+   }
+   return original(array);
+  };
+ });
+ await page.goto('http://127.0.0.1:5173');
+ const panel=page.locator('#instability-panel');
+ await expect(panel).toHaveAttribute('data-level','elevated',{timeout:5000});
+ await expect(page.locator('#instability-output')).toHaveCSS('color','rgb(230, 203, 112)');
+ await expect(panel).toHaveAttribute('data-level','high',{timeout:5000});
+ await expect(page.locator('#instability-level')).toHaveText('HIGH');
+ await expect(page.locator('#instability-meter')).toHaveAttribute('aria-valuetext',/high/);
+ await page.screenshot({path:'test-results/high-instability.png'});
+});

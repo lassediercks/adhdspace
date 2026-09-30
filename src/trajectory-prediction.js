@@ -2,7 +2,6 @@ import { BeamNetwork, networkFlightRoute } from './beam-network.js';
 import { scheduledBeamCount } from './beam-schedule.js';
 import { Navigation, activeBodies } from './navigation.js';
 import { smoothControl } from './flight-controls.js';
-import { SpaceWeather } from './space-weather.js';
 import { flightRoute } from './flight-route.js';
 import { OrbitalGravity } from './orbital-gravity.js';
 import { Journey } from './journey.js';
@@ -14,7 +13,7 @@ export const FORECAST_SECONDS=42;
 export const MULTI_BEAM_FORECAST_SECONDS=90;
 const damp=(value,target,rate,dt)=>target+(value-target)*Math.exp(-rate*dt);
 
-// Forecast a private copy of the actual simulation. No guessed helix and no
+// Forecast physics under current weather, not future random changes. No guessed helix or
 // mutation of live momentum, capture state, scenery, or recorded flight history.
 export function predictPath(snapshot, horizon=(snapshot.targetDual ? MULTI_BEAM_FORECAST_SECONDS : FORECAST_SECONDS)) {
   const physics=new OrbitalGravity();
@@ -24,8 +23,6 @@ export function predictPath(snapshot, horizon=(snapshot.targetDual ? MULTI_BEAM_
   navigation?.restore(snapshot.navigation);
   const network=snapshot.network?new BeamNetwork(snapshot.network.seed):null;
   if(network)network.restore(snapshot.network);
-  const weather=snapshot.weather?new SpaceWeather():null;
-  weather?.restore(snapshot.weather);
   journey.rate=snapshot.journey.rate;
   journey.distance=snapshot.journey.distance;
   journey.orbit=snapshot.journey.orbit?{id:snapshot.journey.orbit.id,normal:{...snapshot.journey.orbit.normal}}:null;
@@ -41,7 +38,8 @@ export function predictPath(snapshot, horizon=(snapshot.targetDual ? MULTI_BEAM_
     const targetDual=network?network.beams.length-1:flightSeconds===undefined?(snapshot.targetDual??0):scheduledBeamCount(flightSeconds)-1;
     dual=damp(dual,targetDual,2,FORECAST_STEP);
     radius=smoothControl(radius,snapshot.targetRadius,FORECAST_STEP/snapshot.speed);
-    instability=weather?weather.advance(FORECAST_STEP/snapshot.speed):smoothControl(instability,snapshot.targetInstability,FORECAST_STEP/snapshot.speed);
+    // Hold the observed field: future random weather is unknowable. A new
+    // observation will revise this route on the next forecast refresh.
     if(navigation&&network)navigation.exposure=network.exposure(journey.distance);
     navigation?.advance(FORECAST_STEP,physics.position,physics.velocity,activeBodies(bodies,navigation),instability,radius,FORECAST_STEP/snapshot.speed);
     const previousRate=journey.rate;

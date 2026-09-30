@@ -87,7 +87,7 @@ test('beam schedule starts at one, adds one every 30 seconds, and stops at ten',
  assert.equal(scheduledBeamCount(270),10);assert.equal(scheduledBeamCount(9999),10);
 });
 
-test('forecast reproduces slow controls, random weather, lock loss, and a scheduled beam',()=>{
+test('forecast reproduces slow controls and lock loss under observed weather, without anticipating random weather',()=>{
  const physics=new OrbitalGravity(),initial=flightRoute(1.05,4),navigation=new Navigation(5),weather=new SpaceWeather(31),journey=new Journey();
  physics.reset(initial,initial.velocity);navigation.threshold=.00001;
  // Distant gravity perturbs the ship without activating near-surface avoidance.
@@ -100,7 +100,7 @@ test('forecast reproduces slow controls, random weather, lock loss, and a schedu
  for(let i=1;i<=120;i++) {
   const dt=FORECAST_STEP;phase+=dt*.45;seconds+=dt/1.5;
   const target=scheduledBeamCount(seconds)-1;dual=target+(dual-target)*Math.exp(-2*dt);
-  radius=smoothControl(radius,0,dt/1.5);const instability=weather.advance(dt/1.5);
+  radius=smoothControl(radius,0,dt/1.5);const instability=snapshot.instability;
   navigation.advance(dt,physics.position,physics.velocity,moving,instability,radius);
   const old=journey.rate,travel=journey.advance(dt,physics.position,physics.velocity,moving,instability,radius,navigation);
   physics.velocity.x+=8*(old-journey.rate);

@@ -2,7 +2,7 @@ import { FlightScore } from './flight-score.js';
 import { BeamNetwork, networkFlightRoute } from './beam-network.js';
 import { Navigation, RESCUE_FUEL, REFUEL_SECONDS, fuelBurnRate } from './navigation.js';
 import { smoothControl } from './flight-controls.js';
-import { SpaceWeather } from './space-weather.js';
+import { SpaceWeather, instabilityLevel } from './space-weather.js';
 import { SpaceBackdrop } from './space-backdrop.js';
 import { flightRoute, MAX_BEAMS } from './flight-route.js';
 import './style.css';
@@ -92,7 +92,7 @@ const score = new FlightScore();
 const navigation = new Navigation(asteroids.seed);
 const network = new BeamNetwork(asteroids.seed);
 beams.forEach((beam,index)=>{beam.pick.userData.beamIndex=index;});
-const weather = new SpaceWeather(asteroids.seed^0x5f3759df);
+const weather = new SpaceWeather();
 const nominalPosition = new THREE.Vector3();
 const previousPosition = new THREE.Vector3();
 let currentInstability = weather.value;
@@ -173,7 +173,7 @@ function animate(){
  if(predictionDirty||bodySignature!==predictionBodies||(step>0&&predictionCooldown>=.2)) {
   if(predictionDirty||bodySignature!==predictionBodies)prediction.invalidate();
   prediction.refresh({
-    position:gravity.position,velocity:gravity.velocity,journey,navigation,weather,network,bodies:asteroids.asteroids.map(body=>body.definition),
+    position:gravity.position,velocity:gravity.velocity,journey,navigation,network,bodies:asteroids.asteroids.map(body=>body.definition),
     flightSeconds:state.elapsed/state.speed,
     dual:currentDual,targetDual:state.beamCount-1,
     phase:state.phase,radius:currentRadius,targetRadius:state.radius,
@@ -181,7 +181,7 @@ function animate(){
   },state.elapsed);
   predictionDirty=false;predictionCooldown=0;predictionBodies=bodySignature;
  }
- prediction.follow(ship.position,journey.distance,state.elapsed,dt);
+ prediction.follow(ship.position,journey.distance,state.elapsed,dt,currentInstability);
  backdrop.advance(journeyStep*2.8);
  // Translate the camera with the ship, preserving the user's orbit and zoom.
  // Target the ship every frame, including beam transfers and asteroid capture.
@@ -208,9 +208,13 @@ $('coherence').addEventListener('input',()=>{
 syncCoherence();window.addEventListener('pageshow',syncCoherence);
 controls.addEventListener('start',()=>{cameraTransition=false;});
 function updateWeatherIndicator(){
+ const level=instabilityLevel(currentInstability);
+ $('instability-panel').dataset.level=level;
+ $('instability-level').textContent=level==='high'?'HIGH':level==='elevated'?'ELEVATED':'NORMAL';
  const value=Math.round(currentInstability*100);
  $('instability-output').textContent=`${value}%`;
  $('instability-meter').setAttribute('aria-valuenow',value);
+ $('instability-meter').setAttribute('aria-valuetext',`${value}% · ${level}`);
  $('weather-fill').style.height=`${value}%`;
 }
 function updateFuelIndicator(){

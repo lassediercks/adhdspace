@@ -16,3 +16,21 @@ test('new forecast positions ease into view instead of snapping on control chang
  for(let i=0;i<100;i++)preview.follow({x:0,y:0,z:0},0,0,.1);
  assert.ok(preview.geometry.attributes.position.getY(1)>9.99);
 });
+
+test('high instability makes revised forecasts more visible and responsive without snapping',()=>{
+ const previousWorker=globalThis.Worker;
+ globalThis.Worker=class { postMessage(){} };
+ let calm,high;
+ try {calm=new PredictedPath(new THREE.Group());high=new PredictedPath(new THREE.Group());}
+ finally{globalThis.Worker=previousWorker;}
+ for(const preview of [calm,high]){
+  preview.apply(new Float32Array([0,0,0,1,0,0,2,0,0]),0,0);
+  preview.apply(new Float32Array([0,0,0,1,10,0,2,10,0]),0,0);
+ }
+ calm.follow({x:0,y:0,z:0},0,0,.1,.5);
+ high.follow({x:0,y:0,z:0},0,0,.1,1);
+ assert.ok(high.geometry.attributes.position.getY(1)>calm.geometry.attributes.position.getY(1));
+ assert.ok(high.geometry.attributes.position.getY(1)<5);
+ assert.ok(high.line.material.opacity>calm.line.material.opacity);
+ assert.equal(high.geometry.attributes.position.getY(0),0);
+});

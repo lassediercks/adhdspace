@@ -44,3 +44,10 @@
 .engine-consumption { display:flex; flex-direction:column; align-items:center; gap:8px; font-variant-numeric:tabular-nums; }
 .engine-consumption span { font-size:8px; letter-spacing:1px; color:#96a5a8; }
 .engine-consumption output { font-size:12px; color:#d5b88a; white-space:nowrap; }
+
+#instability-panel { --weather-color:#a4d8c7; }
+#instability-panel[data-level=elevated] { --weather-color:#e6cb70; }
+#instability-panel[data-level=high] { --weather-color:#f19a7a; }
+#instability-panel #instability-output,#instability-level { color:var(--weather-color); }
+#instability-panel #weather-fill { background:var(--weather-color); transition:background .3s; }
+#instability-level { font-size:8px; letter-spacing:1px; }
