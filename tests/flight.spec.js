@@ -154,3 +154,13 @@ test('forecast worker reports a refueling encounter for blue route rendering',as
  });
  expect(result.willRefuel).toBe(true);expect(result.count).toBeGreaterThan(100);
 });
+
+
+test('an upcoming fork is announced without automatically changing the selected beam',async({page})=>{
+ await seedField(page,2);await page.goto('http://127.0.0.1:5173');
+ await page.getByRole('slider',{name:'Stabilizer engines',exact:true}).fill('20');
+ await expect(page.locator('#beam-choice')).toHaveText('Fork ahead · click a branch to follow',{timeout:40000});
+ await page.waitForTimeout(4500);
+ await expect(page.locator('#out-of-fuel-notice')).toBeHidden();
+ await page.screenshot({path:'test-results/upcoming-fork.png'});
+});

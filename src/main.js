@@ -44,7 +44,7 @@ controls.enablePan = false;
 controls.minDistance = 12;
 controls.maxDistance = 250;
 controls.autoRotate = false;
-const defaultCameraOffset = new THREE.Vector3(18, 13, 28);
+const defaultCameraOffset = new THREE.Vector3(-48, 10, 6);
 camera.position.copy(defaultCameraOffset);
 // A single key light and restrained ambient fill preserve crisp cel-shading bands.
 scene.add(new THREE.AmbientLight(0xffffff, 0.8));
@@ -135,7 +135,7 @@ function animate(){
   beam.core.material.opacity=opacity;beam.rim.material.opacity=.18*opacity;
   if(opacity>0){
    beam.update(beamObstacles,centers[index],network.direction(index),network.extent(index));
-   beam.core.material.color.setHex(network.selected===null||network.selected===index?0xafffe4:0x688e82);
+   beam.core.material.color.setHex(network.choiceNeeded||network.selected===null||network.selected===index?0xafffe4:0x688e82);
   }
  });
  $('beam-choice').hidden=state.beamCount===1||(!network.choiceNeeded&&network.selected===null);

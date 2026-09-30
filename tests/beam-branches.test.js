@@ -56,3 +56,14 @@ test('fork beams have no light or click target behind their starting point',()=>
  assert.equal(behind.intersectObject(beam.pick).length,0);
  assert.ok(ahead.intersectObject(beam.pick).length>0);
 });
+
+
+test('the starting camera can see a distant fork in desktop and narrow mobile views',()=>{
+ for(const aspect of [1440/1000,390/844]){
+  const camera=new THREE.PerspectiveCamera(43,aspect,.1,6000);
+  camera.position.set(-48,10,6);camera.lookAt(0,0,0);camera.updateMatrixWorld(true);
+  const projected=new THREE.Vector3(BRANCH_LOOKAHEAD,0,0).project(camera);
+  assert.ok(Math.abs(projected.x)<1&&Math.abs(projected.y)<1);
+  assert.ok(projected.z>-1&&projected.z<1);
+ }
+});
