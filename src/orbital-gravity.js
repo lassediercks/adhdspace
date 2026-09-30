@@ -8,6 +8,7 @@ const SHIP_EXTENT = 3;
 const OMEGA = 0.45;
 const MAX_GUIDANCE_ACCELERATION = 3;
 const MAX_AVOIDANCE_ACCELERATION = 180;
+export const MAX_THRUST_JERK=80;
 const AXES = ['x', 'y', 'z'];
 const length = v => Math.hypot(v.x, v.y, v.z);
 function limit(v, max) {
@@ -40,10 +41,11 @@ export function gravitationalAcceleration(position, asteroids, instability) {
 export class OrbitalGravity {
   constructor() { this.reset(); }
 
-  reset(position = null, velocity = null) {
+  reset(position = null, velocity = null, thrustAcceleration = null) {
     this.position = position && {...position};
     this.velocity = velocity ? {...velocity} : {x:0,y:0,z:0};
     this.offset = {x:0,y:0,z:0};
+    this.thrustAcceleration=thrustAcceleration?{...thrustAcceleration}:null;
   }
 
   acceleration(position, velocity, nominal, asteroids, strength, radius, orbit, navigation = null) {
@@ -96,7 +98,7 @@ export class OrbitalGravity {
       for (const axis of AXES) normal[axis] /= distance;
       const gap = distance - bodyClearance(body, radius);
       const closing = Math.max(0, -((velocity.x-(body.vx??0))*normal.x + velocity.y*normal.y + velocity.z*normal.z));
-      const brakingZone = 4 + closing * 1.5;
+      const brakingZone = 8 + closing * 2.5;
       const t = Math.max(0, Math.min(1, 1-gap/brakingZone));
       const activation = t*t*(3-2*t);
       const inwardAcceleration = Math.max(0,-(acceleration.x*normal.x+acceleration.y*normal.y+acceleration.z*normal.z));
@@ -106,6 +108,20 @@ export class OrbitalGravity {
     limit(avoidance, MAX_AVOIDANCE_ACCELERATION);
     for (const axis of AXES) acceleration[axis] += avoidance[axis];
     return acceleration;
+  }
+
+  integratedAcceleration(position,velocity,nominal,bodies,strength,radius,orbit,navigation,seconds) {
+    const requested=this.acceleration(position,velocity,nominal,bodies,strength,radius,orbit,navigation);
+    const gravity=gravitationalAcceleration(position,bodies,strength);
+    const thrust={x:requested.x-gravity.x,y:requested.y-gravity.y,z:requested.z-gravity.z};
+    if(this.thrustAcceleration===null)this.thrustAcceleration={...thrust};
+    else {
+      const change={x:thrust.x-this.thrustAcceleration.x,y:thrust.y-this.thrustAcceleration.y,z:thrust.z-this.thrustAcceleration.z};
+      limit(change,MAX_THRUST_JERK*seconds);
+      for(const axis of AXES)this.thrustAcceleration[axis]+=change[axis];
+    }
+    for(const axis of AXES)gravity[axis]+=this.thrustAcceleration[axis];
+    return gravity;
   }
 
   advance(dt, nominal, asteroids, instability, orbitRadius = null, orbit = null, route = null, navigation = null) {
@@ -128,13 +144,13 @@ export class OrbitalGravity {
     };
     for(let step=0;step<steps;step++) {
       const start=atTime(step*h-dt);
-      const a=this.acceleration(this.position,this.velocity,start.target,start.sources,instability,orbitRadius,orbit,navigation);
+      const a=this.integratedAcceleration(this.position,this.velocity,start.target,start.sources,instability,orbitRadius,orbit,navigation,h/2);
       for(const axis of AXES) {
         this.velocity[axis]+=a[axis]*h/2;
         this.position[axis]+=this.velocity[axis]*h;
       }
       const end=atTime((step+1)*h-dt);
-      const b=this.acceleration(this.position,this.velocity,end.target,end.sources,instability,orbitRadius,orbit,navigation);
+      const b=this.integratedAcceleration(this.position,this.velocity,end.target,end.sources,instability,orbitRadius,orbit,navigation,h/2);
       for(const axis of AXES) this.velocity[axis]+=b[axis]*h/2;
     }
     for(const axis of AXES) this.offset[axis]=this.position[axis]-nominal[axis];

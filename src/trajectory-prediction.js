@@ -18,7 +18,7 @@ const damp=(value,target,rate,dt)=>target+(value-target)*Math.exp(-rate*dt);
 // mutation of live momentum, capture state, scenery, or recorded flight history.
 export function forecastFlight(snapshot, horizon=(snapshot.targetDual ? MULTI_BEAM_FORECAST_SECONDS : FORECAST_SECONDS)) {
   const physics=new OrbitalGravity();
-  physics.reset(snapshot.position,snapshot.velocity);
+  physics.reset(snapshot.position,snapshot.velocity,snapshot.thrustAcceleration);
   const journey=new Journey();
   const navigation=snapshot.navigation?new Navigation(snapshot.navigation.seed):null;
   navigation?.restore(snapshot.navigation);

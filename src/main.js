@@ -1,3 +1,4 @@
+import { ShipAttitude } from './ship-attitude.js';
 import { SUPPLY_STATION_DISTANCE } from './flyby-motion.js';
 import { FlightScore } from './flight-score.js';
 import { BeamNetwork, networkFlightRoute } from './beam-network.js';
@@ -101,6 +102,7 @@ const initialRoute=flightRoute(state.phase,state.radius,state.beamCount-1);
 ship.position.copy(initialRoute);
 gravity.reset(ship.position,initialRoute.velocity);
 const direction=new THREE.Vector3(), shipAxis=new THREE.Vector3(1,0,0);
+const attitude=new ShipAttitude();
 const targetRotation=new THREE.Quaternion(),bankRotation=new THREE.Quaternion().setFromAxisAngle(shipAxis,-.16);
 const clock=new THREE.Clock();
 let currentDual=state.beamCount-1;
@@ -163,7 +165,7 @@ function animate(){
  }
  if(direction.lengthSq()>1e-8){
   targetRotation.setFromUnitVectors(shipAxis,direction).multiply(bankRotation);
-  ship.quaternion.slerp(targetRotation,1-Math.exp(-dt*5));
+  attitude.advance(ship.quaternion,targetRotation,dt);
  }
  exhaust.forEach((e,i)=>{e.scale.y=1+Math.sin(state.elapsed*32+i)*.07;e.material.opacity= .8*(state.playing?1:.55);});
  const forwardDistance = journey.distance;
@@ -174,7 +176,7 @@ function animate(){
  if(predictionDirty||bodySignature!==predictionBodies||(step>0&&predictionCooldown>=.2)) {
   if(predictionDirty||bodySignature!==predictionBodies)prediction.invalidate();
   prediction.refresh({
-    position:gravity.position,velocity:gravity.velocity,journey,navigation,network,bodies:asteroids.asteroids.map(body=>body.definition),
+    position:gravity.position,velocity:gravity.velocity,thrustAcceleration:gravity.thrustAcceleration,journey,navigation,network,bodies:asteroids.asteroids.map(body=>body.definition),
     flightSeconds:state.elapsed/state.speed,
     dual:currentDual,targetDual:state.beamCount-1,
     phase:state.phase,radius:currentRadius,targetRadius:navigation.fuel>0?state.radius:currentRadius,
