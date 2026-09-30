@@ -21,8 +21,8 @@ test('each added beam has an unbiased seeded chance of a slight divergence',()=>
  assert.ok(divergent>450&&divergent<550,`${divergent}/1000`);
 });
 
-test('divergence widens oscillation and risk until a smooth pilot selection settles it',()=>{
- const network=new BeamNetwork(1);network.advance(30,0,0);
+test('an explicitly weaving route settles when the pilot selects a beam',()=>{
+ const network=new BeamNetwork(1);network.selected=null;network.weave=1;network.advance(30,0,0);
  // Controlled fork geometry isolates widening from the seeded chance.
  network.beams[1]={slopeY:.05,slopeZ:.03,bornDistance:0,divergent:true};network.choiceNeeded=true;
  assert.ok(network.exposure(300)>network.exposure(100));

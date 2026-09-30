@@ -62,8 +62,8 @@ export class OccludedBeam {
     scene.add(this.core,this.rim,this.pick);
   }
 
-  update(meshes, center = {y:0,z:0}, direction = {x:1,y:0,z:0}) {
-    const intervals=this.intervals=visibleBeamIntervals(blockedBeamIntervals(meshes,.14,center,direction));
+  update(meshes, center = {y:0,z:0}, direction = {x:1,y:0,z:0}, extent = {start:-10000,end:10000}) {
+    const intervals=this.intervals=visibleBeamIntervals(blockedBeamIntervals(meshes,.14,center,direction),extent.start,extent.end);
     this.core.count=this.rim.count=this.pick.count=intervals.length;
     const axis=new THREE.Vector3(direction.x,direction.y,direction.z).normalize();
     const rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1,0,0),axis);

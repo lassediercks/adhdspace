@@ -127,19 +127,19 @@ function animate(){
  gravity.velocity.x+=8*(previousRate-journey.rate);
  const sources = asteroids.update(journeyStep, ship.position, journey.rate, step, navigation.consumedStations, state.elapsed/state.speed, navigation, network.supplyCenter(ship.position,journey.distance+SUPPLY_STATION_DISTANCE*2.8/8));
  const beamObstacles=asteroids.asteroids.filter(body=>body.group.visible).map(body=>body.outline);
- const centers=network.centers(journey.distance);
+ const centers=network.renderCenters(journey.distance);
  beams.forEach((beam,index)=>{
-  const opacity=index<state.beamCount?network.opacity(index,journey.distance):0;
+  const opacity=index<state.beamCount?network.opacity(index,journey.distance)*network.reveal(index):0;
   beam.core.visible=beam.rim.visible=opacity>0;
   beam.pick.visible=opacity>.05;
   beam.core.material.opacity=opacity;beam.rim.material.opacity=.18*opacity;
   if(opacity>0){
-   beam.update(beamObstacles,centers[index],network.direction(index));
+   beam.update(beamObstacles,centers[index],network.direction(index),network.extent(index));
    beam.core.material.color.setHex(network.selected===null||network.selected===index?0xafffe4:0x688e82);
   }
  });
- $('beam-choice').hidden=!network.choiceNeeded&&network.selected===null;
- $('beam-choice').textContent=network.choiceNeeded?'Beams diverging · click a beam to follow':`Following beam ${(network.selected??0)+1}`;
+ $('beam-choice').hidden=state.beamCount===1||(!network.choiceNeeded&&network.selected===null);
+ $('beam-choice').textContent=network.choiceNeeded?'Fork ahead · click a branch to follow':`Following beam ${(network.selected??0)+1}`;
  const orbitPlanet=journey.orbit&&sources.find(p=>p.id===journey.orbit.id);
  const orbit=orbitPlanet?{body:orbitPlanet,normal:journey.orbit.normal}:null;
  const route={phase:a,radius:r,dual:currentDual,network,distance:journey.distance,forwardSpeed:journey.rate*2.8};
@@ -149,7 +149,7 @@ function animate(){
  ship.position.set(nominalPosition.x + offset.x, nominalPosition.y + offset.y, nominalPosition.z + offset.z);
  score.advance(state.playing?dt:0,ship.position,beams.slice(0,state.beamCount).map((beam,index)=>({
    center:centers[index],direction:network.direction(index),intervals:beam.intervals??[],
-   opacity:network.opacity(index,journey.distance),
+   opacity:network.opacity(index,journey.distance)*network.reveal(index),
  })),navigation.fuel>0);
  $('score-output').textContent=Math.floor(score.total).toLocaleString('en-US');
  $('score-rate').textContent=`+${score.rate.toFixed(1)} pts / s`;
