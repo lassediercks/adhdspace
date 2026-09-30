@@ -227,3 +227,53 @@ test('an economical opening flight can reach and finish refueling before its tan
   assert.equal(nav.fuel,100);
  }
 });
+
+
+test('repeat supplies arrive at sixty percent fuel and replace missed stations without disrupting docking',()=>{
+ const nav=new Navigation();let body=advanceFlyby(spawnAsteroid(7,31),0,origin,1,40,nav);
+ nav.consumedStations.push(`${body.id}:${body.generation}`);
+ nav.fuel=61;
+ assert.equal(advanceFlyby(body,0,origin,1,60,nav).generation,body.generation);
+ nav.fuel=60;
+ const supplied=advanceFlyby(body,0,origin,1,60,nav);
+ assert.equal(supplied.generation,body.generation+1);
+ assert.equal(supplied.kind,'station');assert.equal(supplied.x,72);
+ assert.equal(activeBodies([supplied],nav).length,1);
+ assert.equal(advanceFlyby(supplied,0,origin,1,69,nav).generation,supplied.generation);
+ const missed={...supplied,x:-40};
+ assert.equal(advanceFlyby(missed,0,origin,1,65,nav).generation,missed.generation);
+ const replacement=advanceFlyby(missed,0,origin,1,69,nav);
+ assert.equal(replacement.generation,missed.generation+1);assert.equal(replacement.x,72);
+ nav.refueling=true;nav.stationId=7;
+ assert.equal(advanceFlyby(missed,0,origin,1,70,nav).generation,missed.generation);
+ nav.refueling=false;nav.stationId=null;
+ const stopped=advanceFlyby(missed,0,origin,0,70,nav);
+ assert.ok(Math.hypot(stopped.x,stopped.y,stopped.z)<15);
+});
+
+test('three consecutive refuels remain reachable after returning to full engine power',()=>{
+ for(const seed of [1,31,133]){
+  const nav=new Navigation(seed),physics=new OrbitalGravity(),journey=new Journey();
+  let body=spawnAsteroid(7,seed),phase=1.05,radius=0,minimumFuel=100;
+  physics.reset(flightRoute(phase,radius),origin);
+  for(let frame=1;frame<=240*60&&nav.consumedStations.length<3;frame++){
+   const dt=1/60,step=dt*1.5,time=frame*dt;
+   const stationActive=body.kind==='station'&&activeBodies([body],nav).length>0;
+   const conserving=nav.consumedStations.length===0?time>=10:stationActive;
+   const target=conserving?5.6:0;radius=target+(radius-target)*Math.exp(-.3*dt);
+   phase+=step*.45;
+   let sources=stationActive?[body]:[];
+   nav.advance(step,physics.position,physics.velocity,sources,0,radius,dt);
+   minimumFuel=Math.min(minimumFuel,nav.fuel);
+   const previous=journey.rate;
+   const travel=journey.advance(step,physics.position,physics.velocity,sources,0,radius,nav);
+   physics.velocity.x+=8*(previous-journey.rate);
+   body=advanceFlyby(body,travel,physics.position,journey.rate,time,nav);
+   sources=body.kind==='station'?activeBodies([body],nav):[];
+   const orbit=journey.orbit&&sources.length?{body,normal:journey.orbit.normal}:null;
+   physics.advance(step,flightRoute(phase,radius),sources,0,radius,orbit,{phase,radius,dual:0},nav);
+  }
+  assert.equal(nav.consumedStations.length,3,`seed ${seed}`);
+  assert.ok(minimumFuel>20,`seed ${seed}: lowest fuel ${minimumFuel}`);
+ }
+});

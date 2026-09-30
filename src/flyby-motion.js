@@ -51,21 +51,25 @@ export function spawnAsteroid(id, seed, generation=0,flightSeconds=0) {
   return body;
 }
 
-export function advanceFlyby(body, dt, shipPosition, progressRate, flightSeconds=0) {
-  // One opening station is timed and placed within approach range. Subsequent
-  // stations keep the random field distribution. Shared with the forecast.
-  if(body.id===7&&body.seed!==undefined&&!body.openingStationSpawned&&flightSeconds>=STATION_START_SECONDS){
+export function advanceFlyby(body, dt, shipPosition, progressRate, flightSeconds=0, navigation=null) {
+  // Reserve one supply slot for reachable opportunities, while other stations
+  // retain random placement. This same rule runs in the forecast.
+  const consumed=navigation?.consumedStations?.includes(`${body.id}:${body.generation??0}`);
+  const missed=body.x<shipPosition.x-25||Math.hypot(body.x-shipPosition.x,body.y-shipPosition.y,body.z-shipPosition.z)>120;
+  const needsSupply=navigation&&navigation.fuel<=60&&!navigation.refueling&&navigation.stationId!==body.id
+    &&flightSeconds-(body.supplySpawnTime??0)>=8&&(consumed||missed||body.kind!=='station');
+  if(body.id===7&&body.seed!==undefined&&flightSeconds>=STATION_START_SECONDS&&(!body.openingStationSpawned||needsSupply)){
     const station=spawnAsteroid(body.id,body.seed,body.generation+1,flightSeconds);
-    const angle=station.geometrySeed;
-    return {...station,x:shipPosition.x+72,y:shipPosition.y+8*Math.cos(angle),z:shipPosition.z+8*Math.sin(angle),
-      vx:-8*progressRate,openingStationSpawned:true};
+    const angle=station.geometrySeed,lead=body.openingStationSpawned?Math.max(12,72*progressRate):72;
+    return {...station,x:shipPosition.x+lead,y:shipPosition.y+8*Math.cos(angle),z:shipPosition.z+8*Math.sin(angle),
+      vx:-8*progressRate,openingStationSpawned:true,supplySpawnTime:flightSeconds};
   }
   let next={...body,x:body.x-dt*8,vx:-8*progressRate};
   const distance=Math.hypot(next.x-shipPosition.x,next.y-shipPosition.y,next.z-shipPosition.z);
   if(dt>0&&next.x<-(body.recycleBehind??84)&&distance>(body.seed===undefined?140:350)) {
     next=body.seed===undefined
       ? {...next,x:next.x+(body.recycleSpan??360),generation:(body.generation??0)+1}
-      : {...spawnAsteroid(body.id,body.seed,body.generation+1,flightSeconds),vx:-8*progressRate,openingStationSpawned:body.openingStationSpawned};
+      : {...spawnAsteroid(body.id,body.seed,body.generation+1,flightSeconds),vx:-8*progressRate,openingStationSpawned:body.openingStationSpawned,supplySpawnTime:body.supplySpawnTime};
   }
   return next;
 }

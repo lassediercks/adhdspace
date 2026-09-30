@@ -124,7 +124,7 @@ function animate(){
  const journeyStep=journey.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius,navigation);
  // Moving into/out of the local body frame preserves relative velocity.
  gravity.velocity.x+=8*(previousRate-journey.rate);
- const sources = asteroids.update(journeyStep, ship.position, journey.rate, step, navigation.consumedStations, state.elapsed/state.speed);
+ const sources = asteroids.update(journeyStep, ship.position, journey.rate, step, navigation.consumedStations, state.elapsed/state.speed, navigation);
  const beamObstacles=asteroids.asteroids.filter(body=>body.group.visible).map(body=>body.outline);
  const centers=network.centers(journey.distance);
  beams.forEach((beam,index)=>{
