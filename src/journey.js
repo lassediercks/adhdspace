@@ -26,7 +26,15 @@ export class Journey {
         if((energy>=0&&!station) || distance>=nearest)continue;
         let normal={x:relative.y*v.z-relative.z*v.y,y:relative.z*v.x-relative.x*v.z,z:relative.x*v.y-relative.y*v.x};
         const magnitude=Math.hypot(normal.x,normal.y,normal.z);
-        if(magnitude<.01)normal={x:1,y:0,z:0};
+        if(magnitude<.01) {
+          // A head-on encounter still needs an orbit plane perpendicular to
+          // the radius; an X normal would otherwise leave zero tangent.
+          const reference=Math.abs(relative.x)<Math.abs(relative.y)?{x:1,y:0,z:0}:{x:0,y:1,z:0};
+          normal={x:relative.y*reference.z-relative.z*reference.y,y:relative.z*reference.x-relative.x*reference.z,z:relative.x*reference.y-relative.y*reference.x};
+          const size=Math.hypot(normal.x,normal.y,normal.z);
+          if(size>1e-9)for(const axis of ['x','y','z'])normal[axis]/=size;
+          else normal={x:0,y:0,z:1};
+        }
         else for(const axis of ['x','y','z'])normal[axis]/=magnitude;
         candidate={id:body.id,normal};nearest=distance;
       }

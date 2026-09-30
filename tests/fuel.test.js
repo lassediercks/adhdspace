@@ -100,3 +100,16 @@ test('zero engines and zero gravity do not stall a captured ship',()=>{
  for(let i=0;i<60;i++)physics.advance(1/60,flightRoute(0,7),[body],0,7,orbit,null,nav);
  assert.ok(Math.hypot(physics.position.x-before.x,physics.position.y-before.y,physics.position.z-before.z)>1.5);
 });
+
+
+test('a head-on station capture has a nonzero orbit tangent at zero engine power',()=>{
+ const journey=new Journey(),nav=new Navigation();nav.mode='derailed';nav.stationId=7;
+ const body={id:7,kind:'station',x:15,y:0,z:0,radius:3,mass:3,vx:0};
+ journey.advance(1/60,origin,origin,[body],0,7,nav);
+ assert.ok(journey.orbit);
+ const n=journey.orbit.normal;
+ assert.ok(Math.hypot(n.y,n.z)>.99);
+ const physics=new OrbitalGravity();physics.reset(origin,origin);
+ for(let i=0;i<600;i++)physics.advance(1/60,flightRoute(0,7),[body],0,7,{body,normal:n},null,nav);
+ assert.ok(Math.hypot(physics.velocity.y,physics.velocity.z)>.5);
+});
