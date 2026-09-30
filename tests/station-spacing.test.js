@@ -52,7 +52,7 @@ test('docking stays on one station through competing nearby stations and finishe
   assert.equal(nav.stationId,7);assert.equal(nav.refuelKey,'7:0');
  }
  nav.advance(.1,origin,origin,[b,a],0,5.6,.1);
- assert.equal(nav.fuel,100);assert.deepEqual(nav.consumedStations,['7:0']);
+ assert.equal(nav.fuel,100);assert.deepEqual(nav.consumedStations,['7:0','6:0']);
  assert.equal(nav.mode,'tracking');assert.equal(nav.refueling,false);
  const travel=journey.advance(.1,origin,origin,[b,a],0,5.6,nav);
  assert.equal(journey.orbit,null);assert.ok(travel>0);

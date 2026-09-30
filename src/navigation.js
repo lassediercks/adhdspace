@@ -31,6 +31,7 @@ export class Navigation {
   }
   advance(dt,position,velocity,bodies,instability,radius,realSeconds=dt) {
     if(dt<=0)return;
+    const arrivedFull=this.fuel>=99.5&&!this.refueling;
     this.cooldown=Math.max(0,this.cooldown-realSeconds);
     this.fuel=Math.max(0,this.fuel-dt*fuelBurnRate(radius));
     if(this.fuel===0&&this.mode==='tracking')this.mode='derailed';
@@ -39,6 +40,10 @@ export class Navigation {
       .map(body=>({body,distance:Math.hypot(position.x-body.x,position.y-body.y,position.z-body.z)}))
       .filter(({body,distance})=>distance<bodyClearance(body,radius)+10+(stationKey(body)===this.refuelKey?5:0))
       .sort((a,b)=>Number(stationKey(b.body)===this.refuelKey)-Number(stationKey(a.body)===this.refuelKey)||a.distance-b.distance);
+    if(arrivedFull){
+      for(const {body} of stations)this.consumedStations.push(stationKey(body));
+      this.stationId=null;this.refuelKey=null;this.refuelElapsed=0;
+    }
     for(const {body,distance} of stations) {
       if(body.kind!=='station'||this.consumedStations.includes(stationKey(body)))continue;
       const reach=bodyClearance(body,radius)+10+(stationKey(body)===this.refuelKey?5:0);
@@ -57,6 +62,11 @@ export class Navigation {
           // A serviced ship can steer again. Keep momentum and ease lock back
           // in below; stale encounter risk must not immediately derail departure.
           this.mode='tracking';this.hazard=0;this.immunity=12;
+          // Any other station in immediate docking range is unnecessary now.
+          for(const {body:nearby} of stations){
+            const nearbyKey=stationKey(nearby);
+            if(!this.consumedStations.includes(nearbyKey))this.consumedStations.push(nearbyKey);
+          }
         }
         break;
       }
@@ -64,7 +74,7 @@ export class Navigation {
     if(!this.refueling){this.stationId=null;this.refuelKey=null;this.refuelElapsed=0;}
     this.immunity=Math.max(0,this.immunity-dt);
     if(this.mode==='tracking'&&this.immunity===0) {
-      const g=gravitationalAcceleration(position,bodies,instability);
+      const g=gravitationalAcceleration(position,activeBodies(bodies,this),instability);
       const pressure=Math.hypot(g.x,g.y,g.z);
       this.hazard+=dt*.35*derailmentRisk(instability,radius)*this.exposure*pressure/(pressure+3);
       if(this.hazard>=this.threshold)this.mode='derailed';

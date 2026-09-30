@@ -268,3 +268,22 @@ test('three consecutive refuels remain reachable after returning to full engine 
   assert.ok(minimumFuel>20,`seed ${seed}: lowest fuel ${minimumFuel}`);
  }
 });
+
+
+test('a station reached with a full tank disappears without docking; distant stations stay visible',()=>{
+ const nav=new Navigation();
+ const near={id:7,generation:0,kind:'station',x:10,y:0,z:0,radius:3,mass:3};
+ const far={...near,id:6,x:180};
+ nav.advance(1/60,origin,origin,[near,far],0,5.6,1/90);
+ assert.equal(nav.mode,'tracking');assert.equal(nav.refueling,false);assert.equal(nav.stationId,null);
+ assert.deepEqual(nav.consumedStations,['7:0']);
+ assert.deepEqual(activeBodies([near,far],nav),[far]);
+});
+
+test('an already derailed full ship skips an unnecessary station without silently rescuing',()=>{
+ const nav=new Navigation();nav.mode='derailed';nav.lock=0;
+ const station={id:7,kind:'station',x:10,y:0,z:0,radius:3,mass:3};
+ nav.advance(1/60,origin,origin,[station],0,7);
+ assert.equal(nav.mode,'derailed');assert.equal(nav.refueling,false);
+ assert.equal(activeBodies([station],nav).length,0);
+});
