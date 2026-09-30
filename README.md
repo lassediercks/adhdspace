@@ -80,3 +80,5 @@ Use **+ / −** for 1–10 parallel beams. Three form an equilateral triangle, f
 **Coherence** controls the orbit width: 0% means radius 7; 100% means radius 0. At 100%, the ship still transfers smoothly between active beams without looping around them. With one beam, it flies straight along it. The original radius-4 default displays as 43%, rounded to a whole percent.
 
 The mint beams, soft blue forecast, and amber recorded trail are visually distinct. The recorded trail retains the entire session without aging or distance fade; reset/reload clears it. Append-only rendering chunks keep old points intact without rewriting the full trail every frame. Distant history can leave the camera's view, but is not deleted.
+
+The background uses 4,850 stars across three depth layers plus 22 muted, low-poly distant planets. Their parallax follows journey progress and stops during pause or asteroid capture. These distant planets are scenery; passing asteroids remain the gravitational encounter bodies.

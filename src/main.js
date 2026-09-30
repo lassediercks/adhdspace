@@ -1,3 +1,4 @@
+import { SpaceBackdrop } from './space-backdrop.js';
 import { flightRoute, beamCenter, MAX_BEAMS } from './flight-route.js';
 import './style.css';
 import { RecordedTrail } from './recorded-trail.js';
@@ -45,18 +46,7 @@ scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 const key = new THREE.DirectionalLight(0xffffff, 1.5);
 key.position.set(4, 12, 10); scene.add(key);
 
-let seed=31;
-function random(){seed=(seed*16807)%2147483647;return(seed-1)/2147483646;}
-const starCount=900;
-const starPositions = new Float32Array(starCount*3), starColors = new Float32Array(starCount*3);
-for(let i=0;i<starCount;i++){
- const a=random()*Math.PI*2, r=i<180?30+random()*300:600+random()*2900;
- starPositions.set([(random()-.5)*(i<180?1200:6000),Math.cos(a)*r,Math.sin(a)*r],i*3);
- const brightness=.2+random()*.7;
- starColors.set([brightness,brightness,brightness],i*3);
-}
-const starGeometry=new THREE.BufferGeometry();starGeometry.setAttribute('position',new THREE.BufferAttribute(starPositions,3));starGeometry.setAttribute('color',new THREE.BufferAttribute(starColors,3));
-scene.add(new THREE.Points(starGeometry,new THREE.PointsMaterial({size:.7,vertexColors:true,transparent:true,opacity:.5,sizeAttenuation:true})));
+const backdrop=new SpaceBackdrop(scene);
 const ship = new THREE.Group(); scene.add(ship);
 const hull = toonMaterial(0xc4ceca);
 const dark = toonMaterial(0x34413f);
@@ -155,8 +145,7 @@ function animate(){
   predictionDirty=false;predictionCooldown=0;predictionBodies=bodySignature;
  }
  prediction.follow(ship.position,journey.distance,state.elapsed);
- for(let i=0;i<starCount;i++){starPositions[i*3]-=journeyStep*2.8;if(starPositions[i*3]<-3000)starPositions[i*3]+=6000;}
- starGeometry.attributes.position.needsUpdate=true;
+ backdrop.advance(journeyStep*2.8);
  if(cameraTransition){
   camera.position.lerp(orbitPosition,1-Math.exp(-dt*4));
   controls.target.lerp(lookTarget,1-Math.exp(-dt*4));
@@ -198,7 +187,7 @@ for(const [id,delta] of [['remove-beam',-1],['add-beam',1]])$(id).addEventListen
 });
 updateBeamControls();
 $('trail').addEventListener('click',()=>{state.trail=!state.trail;trailGroup.visible=state.trail;$('trail').setAttribute('aria-checked',state.trail);});
-function reset(){currentDual=0;state.beamCount=1;updateBeamControls();predictionDirty=true;journey.reset();flownTrail.clear();recordedTrail.clear();gravity.reset();asteroids.reset();currentInstability=0;Object.assign(state,{speed:1.5,radius:4,instability:0,phase:1.05,elapsed:0,trail:true});currentRadius=4;ship.position.set(0,Math.cos(state.phase)*4,Math.sin(state.phase)*4);gravity.reset(ship.position,{x:0,y:-ship.position.z*.45,z:ship.position.y*.45});trailGroup.visible=true;$('trail').setAttribute('aria-checked','true');for(const id of ['coherence','instability']){const value=id==='coherence'?Math.round(100*(1-state.radius/7)):state.instability;$(id).value=value;updateSlider($(id));$(`${id}-output`).textContent=`${value}%`;}cameraTransition=true;updatePlayback();}
+function reset(){backdrop.reset();currentDual=0;state.beamCount=1;updateBeamControls();predictionDirty=true;journey.reset();flownTrail.clear();recordedTrail.clear();gravity.reset();asteroids.reset();currentInstability=0;Object.assign(state,{speed:1.5,radius:4,instability:0,phase:1.05,elapsed:0,trail:true});currentRadius=4;ship.position.set(0,Math.cos(state.phase)*4,Math.sin(state.phase)*4);gravity.reset(ship.position,{x:0,y:-ship.position.z*.45,z:ship.position.y*.45});trailGroup.visible=true;$('trail').setAttribute('aria-checked','true');for(const id of ['coherence','instability']){const value=id==='coherence'?Math.round(100*(1-state.radius/7)):state.instability;$(id).value=value;updateSlider($(id));$(`${id}-output`).textContent=`${value}%`;}cameraTransition=true;updatePlayback();}
 $('reset').addEventListener('click',reset);
 $('info-button').addEventListener('click',()=>$('info-dialog').showModal());
 $('close-info').addEventListener('click',()=>$('info-dialog').close());
