@@ -164,3 +164,20 @@ test('an upcoming fork is announced without automatically changing the selected 
  await expect(page.locator('#out-of-fuel-notice')).toBeHidden();
  await page.screenshot({path:'test-results/upcoming-fork.png'});
 });
+
+
+test('visible interface text is at least sixteen pixels on desktop and mobile',async({page})=>{
+ await seedField(page);await page.goto('http://127.0.0.1:5173');
+ for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
+  await page.setViewportSize(viewport);
+  const small=await page.evaluate(()=>Array.from(document.querySelectorAll('body *')).filter(el=>
+   [...el.childNodes].some(n=>n.nodeType===Node.TEXT_NODE&&n.textContent.trim())&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden'
+   &&parseFloat(getComputedStyle(el).fontSize)<16).map(el=>({text:el.textContent.trim(),font:getComputedStyle(el).fontSize})));
+  expect(small).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
+ await page.screenshot({path:'test-results/mobile-readable.png'});
+ await page.getByRole('button',{name:'About this experiment'}).click();
+ const dialogSmall=await page.getByRole('dialog').evaluate(el=>[...el.querySelectorAll('*')].filter(child=>child.textContent.trim()&&parseFloat(getComputedStyle(child).fontSize)<16).length);
+ expect(dialogSmall).toBe(0);
+});
