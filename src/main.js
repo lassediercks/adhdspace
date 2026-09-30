@@ -1,3 +1,4 @@
+import { SUPPLY_STATION_DISTANCE } from './flyby-motion.js';
 import { FlightScore } from './flight-score.js';
 import { BeamNetwork, networkFlightRoute } from './beam-network.js';
 import { Navigation, RESCUE_FUEL, REFUEL_SECONDS, fuelBurnRate } from './navigation.js';
@@ -124,7 +125,7 @@ function animate(){
  const journeyStep=journey.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius,navigation);
  // Moving into/out of the local body frame preserves relative velocity.
  gravity.velocity.x+=8*(previousRate-journey.rate);
- const sources = asteroids.update(journeyStep, ship.position, journey.rate, step, navigation.consumedStations, state.elapsed/state.speed, navigation);
+ const sources = asteroids.update(journeyStep, ship.position, journey.rate, step, navigation.consumedStations, state.elapsed/state.speed, navigation, network.supplyCenter(ship.position,journey.distance+SUPPLY_STATION_DISTANCE*2.8/8));
  const beamObstacles=asteroids.asteroids.filter(body=>body.group.visible).map(body=>body.outline);
  const centers=network.centers(journey.distance);
  beams.forEach((beam,index)=>{

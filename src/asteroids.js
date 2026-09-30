@@ -88,17 +88,23 @@ export class PassingAsteroids {
     this.update(0);
   }
 
-  update(dt, shipPosition = {x:0,y:0,z:0}, progressRate = 1, spinDt = dt, consumedStations = [], flightSeconds = 0, navigation = null) {
+  update(dt, shipPosition = {x:0,y:0,z:0}, progressRate = 1, spinDt = dt, consumedStations = [], flightSeconds = 0, navigation = null, supplyCenter = shipPosition) {
     this.travel+=dt*8;
     this.sources.length=0;
     this.asteroids.forEach(asteroid=>{
-      const source=advanceFlyby(asteroid.definition,dt,shipPosition,progressRate,flightSeconds,navigation);
+      const source=advanceFlyby(asteroid.definition,dt,shipPosition,progressRate,flightSeconds,navigation,supplyCenter);
       if(source.generation!==asteroid.definition.generation)this.applySpawn(asteroid,source);
       asteroid.definition=source;
       asteroid.group.position.set(source.x,source.y,source.z);
       asteroid.surface.rotation.x+=spinDt*source.spin[0];
       asteroid.surface.rotation.y+=spinDt*source.spin[1];
       asteroid.surface.rotation.z+=spinDt*source.spin[2];
+      // Keep distant stations legible as a blue beacon without enlarging their
+      // collision shape or making nearby stations overwhelm the scene.
+      if(source.kind==='station'){
+        const distance=Math.hypot(source.x-shipPosition.x,source.y-shipPosition.y,source.z-shipPosition.z);
+        asteroid.glow.scale.setScalar(Math.max(source.radius*4,Math.min(40,distance*.07)));
+      }
       asteroid.group.visible=!consumedStations.includes(stationKey(source));
       if(asteroid.group.visible)this.sources.push(source);
     });

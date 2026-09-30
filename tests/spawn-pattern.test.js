@@ -45,7 +45,7 @@ test('initial and recycled fields sample area evenly without forced beam centers
   let inner=0,intersections=0,positiveY=0,positiveZ=0;
   const count=8000;
   for(let i=0;i<count;i++) {
-   const body=spawnAsteroid(i%8,Math.floor(i/8),generation);
+   const body=spawnAsteroid(i%7,Math.floor(i/7),generation);
    const distance=Math.hypot(body.y,body.z);
    assert.ok(distance>0&&distance<=40);
    if(distance<20)inner++;

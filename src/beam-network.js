@@ -48,6 +48,12 @@ export class BeamNetwork {
    return {y:center.y+beam.slopeY*travel,z:center.z+beam.slopeZ*travel};
   });
  }
+ supplyCenter(position,distance) {
+  const centers=this.centers(distance);
+  if(this.selected!==null)return centers[this.selected];
+  return centers.reduce((best,center,index)=>this.opacity(index,distance)>0
+    &&Math.hypot(center.y-position.y,center.z-position.z)<Math.hypot(best.y-position.y,best.z-position.z)?center:best,centers[0]);
+ }
  direction(index) {
   const beam=this.beams[index],length=Math.hypot(1,beam.slopeY,beam.slopeZ);
   return {x:1/length,y:beam.slopeY/length,z:beam.slopeZ/length};

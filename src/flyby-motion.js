@@ -1,5 +1,7 @@
 export const ASTEROID_COUNT=20;
 export const STATION_START_SECONDS=40;
+export const FIRST_STATION_DISTANCE=552;
+export const SUPPLY_STATION_DISTANCE=180;
 
 // Equal-density spherical mass approximation: twice the radius gives 8× mass.
 export function asteroidMass(radius) {
@@ -42,26 +44,32 @@ export function spawnAsteroid(id, seed, generation=0,flightSeconds=0) {
   // Keep one nearby station slot, with extra stations occurring randomly.
   // Their positions use the same unbiased field sampling as the rocks.
   const stationCandidate=!distant&&(id===7||random()<.12);
-  body.kind=flightSeconds>=STATION_START_SECONDS&&stationCandidate?'station':'asteroid';
+  const opening=id===7&&generation===0;
+  body.kind=(opening||flightSeconds>=STATION_START_SECONDS)&&stationCandidate?'station':'asteroid';
   if(body.kind==='station') {
     body.radius=Math.max(2.5,body.radius);body.mass=asteroidMass(body.radius);
     body.avoidanceRadius=body.radius*1.025;body.colors=['#6bbcff'];
     body.spin=body.spin.map(value=>value*.25);
   }
+  if(opening){
+    body.x=FIRST_STATION_DISTANCE;
+    body.y=8*Math.cos(body.geometrySeed);body.z=8*Math.sin(body.geometrySeed);
+    body.openingStationSpawned=true;body.supplySpawnTime=0;
+  }
   return body;
 }
 
-export function advanceFlyby(body, dt, shipPosition, progressRate, flightSeconds=0, navigation=null) {
+export function advanceFlyby(body, dt, shipPosition, progressRate, flightSeconds=0, navigation=null, supplyCenter=shipPosition) {
   // Reserve one supply slot for reachable opportunities, while other stations
   // retain random placement. This same rule runs in the forecast.
   const consumed=navigation?.consumedStations?.includes(`${body.id}:${body.generation??0}`);
-  const missed=body.x<shipPosition.x-25||Math.hypot(body.x-shipPosition.x,body.y-shipPosition.y,body.z-shipPosition.z)>120;
-  const needsSupply=navigation&&navigation.fuel<=60&&!navigation.refueling&&navigation.stationId!==body.id
-    &&flightSeconds-(body.supplySpawnTime??0)>=8&&(consumed||missed||body.kind!=='station');
+  const missed=body.x<shipPosition.x-25||Math.hypot(body.y-shipPosition.y,body.z-shipPosition.z)>80;
+  const needsSupply=navigation&&!navigation.refueling&&navigation.stationId!==body.id
+    &&(consumed||(navigation.fuel<=60&&flightSeconds-(body.supplySpawnTime??0)>=8&&(missed||body.kind!=='station')));
   if(body.id===7&&body.seed!==undefined&&flightSeconds>=STATION_START_SECONDS&&(!body.openingStationSpawned||needsSupply)){
     const station=spawnAsteroid(body.id,body.seed,body.generation+1,flightSeconds);
-    const angle=station.geometrySeed,lead=body.openingStationSpawned?Math.max(12,72*progressRate):72;
-    return {...station,x:shipPosition.x+lead,y:shipPosition.y+8*Math.cos(angle),z:shipPosition.z+8*Math.sin(angle),
+    const angle=station.geometrySeed,lead=SUPPLY_STATION_DISTANCE;
+    return {...station,x:shipPosition.x+lead,y:supplyCenter.y+8*Math.cos(angle),z:supplyCenter.z+8*Math.sin(angle),
       vx:-8*progressRate,openingStationSpawned:true,supplySpawnTime:flightSeconds};
   }
   let next={...body,x:body.x-dt*8,vx:-8*progressRate};

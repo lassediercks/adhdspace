@@ -71,3 +71,17 @@ test('irregular asteroid silhouettes fit their avoidance bounds at every tumble 
   }
  });
 });
+
+
+test('the opening station is already rendered at long range with a readable blue beacon',()=>{
+ const asteroids=new PassingAsteroids(new THREE.Scene(),{seed:31});
+ const station=asteroids.asteroids[7];
+ assert.equal(station.definition.kind,'station');
+ assert.ok(station.group.position.x>500);
+ assert.equal(station.group.visible,true);assert.equal(station.glow.visible,true);
+ assert.ok(station.glow.scale.x>station.definition.radius*4);
+ const geometry=station.surface.geometry;
+ asteroids.update(10,{x:0,y:0,z:0},1,10,[],10/1.5);
+ assert.equal(station.surface.geometry,geometry);
+ assert.equal(station.group.position.x,472);
+});

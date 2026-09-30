@@ -4,7 +4,7 @@ import { Navigation, fuelBurnRate, RESCUE_FUEL, activeBodies } from '../src/navi
 import { Journey } from '../src/journey.js';
 import { OrbitalGravity } from '../src/orbital-gravity.js';
 import { flightRoute } from '../src/flight-route.js';
-import { spawnAsteroid,advanceFlyby,STATION_START_SECONDS } from '../src/flyby-motion.js';
+import { spawnAsteroid,advanceFlyby,STATION_START_SECONDS,FIRST_STATION_DISTANCE,SUPPLY_STATION_DISTANCE } from '../src/flyby-motion.js';
 const origin={x:0,y:0,z:0};
 
 test('coherence trades fuel efficiency for stability and rescue spends a fixed reserve',()=>{
@@ -145,7 +145,7 @@ test('completed refueling restores smooth stabilization without carrying old der
 });
 
 
-test('full engines exhaust fuel before any stations may spawn; conserving fuel lasts longer',()=>{
+test('full engines exhaust fuel before the first station is reached; conserving fuel lasts longer',()=>{
  const full=new Navigation(),economy=new Navigation();
  full.advance(100/fuelBurnRate(0)+.001,origin,origin,[],0,0);
  assert.equal(full.fuel,0);
@@ -153,7 +153,7 @@ test('full engines exhaust fuel before any stations may spawn; conserving fuel l
  economy.advance(STATION_START_SECONDS*1.5,origin,origin,[],0,7);
  assert.ok(economy.fuel>90);
  for(let seed=0;seed<20;seed++)for(let id=0;id<20;id++){
-  assert.equal(spawnAsteroid(id,seed).kind,'asteroid');
+  assert.equal(spawnAsteroid(id,seed).kind,id===7?'station':'asteroid');
   const old={...spawnAsteroid(id,seed),x:-5000};
   assert.equal(advanceFlyby(old,1,origin,1,STATION_START_SECONDS-.001).kind,'asteroid');
  }
@@ -181,21 +181,17 @@ test('opening fuel budget requires lowering engines in the first thirty seconds'
 });
 
 
-test('the opening station appears ahead at forty seconds, within a six-second approach, only once',()=>{
- const ship={x:400,y:120,z:-70};
+test('the opening station is visible far ahead from the start and approaches continuously',()=>{
  for(let seed=0;seed<100;seed++){
-  let body=spawnAsteroid(7,seed);
-  body=advanceFlyby(body,0,ship,1,39.99);assert.equal(body.kind,'asteroid');
-  const station=advanceFlyby(body,0,ship,1,40);
-  assert.equal(station.kind,'station');assert.equal(station.openingStationSpawned,true);
-  assert.equal(station.x-ship.x,72);
-  assert.ok(Math.abs(Math.hypot(station.y-ship.y,station.z-ship.z)-8)<1e-8);
-  const approaching=advanceFlyby(station,6*1.5,ship,1,46);
+  const station=spawnAsteroid(7,seed);
+  assert.equal(station.kind,'station');assert.equal(station.x,FIRST_STATION_DISTANCE);
+  assert.equal(station.openingStationSpawned,true);
+  assert.ok(Math.abs(Math.hypot(station.y,station.z)-8)<1e-8);
+  const distant=advanceFlyby(station,30*1.5,origin,1,30);
+  assert.equal(distant.generation,station.generation);assert.equal(distant.x,192);
+  const approaching=advanceFlyby(distant,16*1.5,origin,1,46);
   assert.equal(approaching.generation,station.generation);
-  assert.ok(Math.hypot(approaching.x-ship.x,approaching.y-ship.y,approaching.z-ship.z)<9);
-  const recycled=advanceFlyby({...station,x:-5000},1,origin,1,100);
-  assert.equal(recycled.openingStationSpawned,true);
-  assert.equal(advanceFlyby(recycled,0,ship,1,101).generation,recycled.generation);
+  assert.ok(Math.hypot(approaching.x,approaching.y,approaching.z)<9);
  }
 });
 
@@ -229,26 +225,21 @@ test('an economical opening flight can reach and finish refueling before its tan
 });
 
 
-test('repeat supplies arrive at sixty percent fuel and replace missed stations without disrupting docking',()=>{
- const nav=new Navigation();let body=advanceFlyby(spawnAsteroid(7,31),0,origin,1,40,nav);
- nav.consumedStations.push(`${body.id}:${body.generation}`);
- nav.fuel=61;
- assert.equal(advanceFlyby(body,0,origin,1,60,nav).generation,body.generation);
- nav.fuel=60;
+test('completed refuels reveal the next station far ahead without moving an approaching station',()=>{
+ const nav=new Navigation();const body=spawnAsteroid(7,31);
+ nav.consumedStations.push(`${body.id}:${body.generation}`);nav.fuel=100;
  const supplied=advanceFlyby(body,0,origin,1,60,nav);
  assert.equal(supplied.generation,body.generation+1);
- assert.equal(supplied.kind,'station');assert.equal(supplied.x,72);
+ assert.equal(supplied.kind,'station');assert.equal(supplied.x,SUPPLY_STATION_DISTANCE);
  assert.equal(activeBodies([supplied],nav).length,1);
+ nav.fuel=60;
  assert.equal(advanceFlyby(supplied,0,origin,1,69,nav).generation,supplied.generation);
  const missed={...supplied,x:-40};
  assert.equal(advanceFlyby(missed,0,origin,1,65,nav).generation,missed.generation);
  const replacement=advanceFlyby(missed,0,origin,1,69,nav);
- assert.equal(replacement.generation,missed.generation+1);assert.equal(replacement.x,72);
+ assert.equal(replacement.generation,missed.generation+1);assert.equal(replacement.x,SUPPLY_STATION_DISTANCE);
  nav.refueling=true;nav.stationId=7;
  assert.equal(advanceFlyby(missed,0,origin,1,70,nav).generation,missed.generation);
- nav.refueling=false;nav.stationId=null;
- const stopped=advanceFlyby(missed,0,origin,0,70,nav);
- assert.ok(Math.hypot(stopped.x,stopped.y,stopped.z)<15);
 });
 
 test('three consecutive refuels remain reachable after returning to full engine power',()=>{
@@ -259,7 +250,7 @@ test('three consecutive refuels remain reachable after returning to full engine 
   for(let frame=1;frame<=240*60&&nav.consumedStations.length<3;frame++){
    const dt=1/60,step=dt*1.5,time=frame*dt;
    const stationActive=body.kind==='station'&&activeBodies([body],nav).length>0;
-   const conserving=nav.consumedStations.length===0?time>=10:stationActive;
+   const conserving=nav.consumedStations.length===0?time>=10:stationActive&&body.x-physics.position.x<120;
    const target=conserving?5.6:0;radius=target+(radius-target)*Math.exp(-.3*dt);
    phase+=step*.45;
    let sources=stationActive?[body]:[];
@@ -268,7 +259,7 @@ test('three consecutive refuels remain reachable after returning to full engine 
    const previous=journey.rate;
    const travel=journey.advance(step,physics.position,physics.velocity,sources,0,radius,nav);
    physics.velocity.x+=8*(previous-journey.rate);
-   body=advanceFlyby(body,travel,physics.position,journey.rate,time,nav);
+   body=advanceFlyby(body,travel,physics.position,journey.rate,time,nav,origin);
    sources=body.kind==='station'?activeBodies([body],nav):[];
    const orbit=journey.orbit&&sources.length?{body,normal:journey.orbit.normal}:null;
    physics.advance(step,flightRoute(phase,radius),sources,0,radius,orbit,{phase,radius,dual:0},nav);
