@@ -7,7 +7,9 @@ export const stationKey=body=>`${body.id}:${body.generation??0}`;
 export const activeBodies=(bodies,navigation)=>bodies.filter(body=>!navigation?.consumedStations?.includes(stationKey(body)));
 export const RESCUE_FUEL=8;
 export const RESCUE_COOLDOWN=30;
-export const fuelBurnRate=radius=>.02+.38*(1-Math.max(0,Math.min(1,radius/7)))**2;
+// Fuel is charged in simulation seconds; the game runs at 1.5× real time.
+// A full tank at maximum engine power therefore lasts 30 real seconds.
+export const fuelBurnRate=radius=>.02+(100/45-.02)*(1-Math.max(0,Math.min(1,radius/7)))**2;
 
 // Seeded accumulated encounter risk is frame-rate independent and forecastable.
 // Losing lock disables return guidance until rescue or a completed station service.

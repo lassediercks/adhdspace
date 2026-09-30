@@ -54,7 +54,7 @@ test('a station refuels in ten seconds, disappears, and releases forward progres
  }
  for(let i=0;i<1800;i++)advance();
  assert.equal(nav.mode,'tracking');assert.equal(nav.refueling,false);
- assert.ok(nav.fuel>98);assert.equal(journey.rate,1);assert.equal(journey.orbit,null);
+ assert.ok(nav.fuel>96);assert.equal(journey.rate,1);assert.equal(journey.orbit,null);
  assert.equal(activeBodies([body],nav).length,0);
  assert.equal(nav.rescue(),false);
  for(let i=0;i<120;i++)advance();
@@ -159,4 +159,23 @@ test('full engines exhaust fuel before any stations may spawn; conserving fuel l
  }
  const old={...spawnAsteroid(7,31),x:-5000};
  assert.equal(advanceFlyby(old,1,origin,1,STATION_START_SECONDS).kind,'station');
+});
+
+
+test('opening fuel budget requires lowering engines in the first thirty seconds',()=>{
+ const full=new Navigation(),saving=new Navigation();
+ let radius=0;
+ for(let frame=0;frame<30*60;frame++){
+  const dt=1/60;
+  full.advance(dt*1.5,origin,origin,[],0,0,dt);
+  // Pilot pulls the lever to 20% after ten seconds; engine response stays gradual.
+  if(frame>=10*60)radius=5.6+(radius-5.6)*Math.exp(-.3*dt);
+  saving.advance(dt*1.5,origin,origin,[],0,radius,dt);
+ }
+ assert.ok(full.fuel<1e-8);assert.ok(saving.fuel>40);
+ for(let frame=30*60;frame<STATION_START_SECONDS*60;frame++){
+  const dt=1/60;radius=5.6+(radius-5.6)*Math.exp(-.3*dt);
+  saving.advance(dt*1.5,origin,origin,[],0,radius,dt);
+ }
+ assert.ok(saving.fuel>15);
 });

@@ -15,8 +15,9 @@ test('full coherence has a small nonzero derailment chance, much less than 50%',
  let protectedFailures=0,exposedFailures=0;
  for(let seed=1;seed<=1000;seed++) {
   const protectedNav=new Navigation(seed),exposed=new Navigation(seed);
-  protectedNav.advance(60,origin,origin,[body],1,0);
-  exposed.advance(60,origin,origin,[body],1,3.5);
+  // Measure gravity risk before either ship can exhaust its fuel.
+  protectedNav.advance(30,origin,origin,[body],1,0);
+  exposed.advance(30,origin,origin,[body],1,3.5);
   protectedFailures+=protectedNav.mode==='derailed';exposedFailures+=exposed.mode==='derailed';
  }
  assert.ok(protectedFailures>0&&protectedFailures<300,`${protectedFailures}/1000`);
