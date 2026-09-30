@@ -1,4 +1,4 @@
-import { ShipAttitude } from './ship-attitude.js';
+import { createDriftingStation } from './drifting-station.js';
 import { SUPPLY_STATION_DISTANCE } from './flyby-motion.js';
 import { FlightScore } from './flight-score.js';
 import { BeamNetwork, networkFlightRoute } from './beam-network.js';
@@ -15,7 +15,6 @@ import { Journey } from './journey.js';
 import { OccludedBeam } from './beam.js';
 import { PredictedPath } from './predicted-path.js';
 import { PassingAsteroids } from './asteroids.js';
-import { toonMaterial, facetedGeometry } from './toon-style.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
@@ -53,33 +52,7 @@ const key = new THREE.DirectionalLight(0xffffff, 1.5);
 key.position.set(4, 12, 10); scene.add(key);
 
 const backdrop=new SpaceBackdrop(scene);
-const ship = new THREE.Group(); scene.add(ship);
-const hull = toonMaterial(0xc4ceca);
-const dark = toonMaterial(0x34413f);
-const panel = hull;
-const teal = toonMaterial(0xa4d8c7);
-const glass = dark;
-function mesh(geometry, material, position=[0,0,0]) {
- const m = new THREE.Mesh(facetedGeometry(geometry), material);
- m.position.set(...position); ship.add(m);
- return m;
-}
-function box(size,position,material=panel){return mesh(new THREE.BoxGeometry(...size),material,position);}
-function poly(vertices,indices,material){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);g.computeVertexNormals();return mesh(g,material);}
-// Faceted fuselage, swept wings, raised cockpit, twin engine nacelles.
-poly([2.3,0,0, .25,.38,-.4, .25,.38,.4, -1.4,.2,-.48,-1.4,.2,.48, -1.45,-.27,-.38,-1.45,-.27,.38, .4,-.24,-.29,.4,-.24,.29], [0,2,1,1,2,4,1,4,3,3,4,6,3,6,5,0,1,7,1,3,5,1,5,7,0,8,2,2,8,6,2,6,4,0,7,8,7,5,6,7,6,8],hull);
-for(const side of [-1,1]){
- poly([.6,0,side*.28,-1.45,.04,side*2.05,-1.9,-.04,side*2.1,-1.48,-.11,side*.32,.4,-.1,side*.28], [0,1,2,0,2,3,0,3,4,4,3,2,4,2,1,4,1,0],panel);
- const nacelle=mesh(new THREE.CylinderGeometry(.19,.24,1.85,8),dark,[-.88,-.015,side*.89]);nacelle.rotation.z=Math.PI/2;
- const engine=mesh(new THREE.CylinderGeometry(.16,.18,.12,16),teal,[-1.84,-.015,side*.89]);engine.rotation.z=Math.PI/2;
- const cowling=box([.55,.19,.36],[-.72,.14,side*.89],hull);
- poly([-1.35,.13,side*.34,-1.6,.93,side*.57,-.84,.24,side*.34,-1.36,.12,side*.4],[0,1,2,2,1,3,0,3,1,0,2,3],dark);
-}
-const cockpit=mesh(new THREE.IcosahedronGeometry(1,0),glass,[.45,.34,0]);cockpit.scale.set(.82,.23,.26);
-const exhaust=[];
-for(const side of [-1,1]){
- const plume=mesh(new THREE.ConeGeometry(.14,1.5,5,1,true),new THREE.MeshBasicMaterial({color:0xa4d8c7,transparent:true,opacity:.95,depthWrite:false}),[-2.58,-.015,side*.89]);plume.rotation.z=Math.PI/2;exhaust.push(plume);
-}
+const ship=createDriftingStation();scene.add(ship);
 const trailGroup=new THREE.Group();scene.add(trailGroup);
 const flownTrail = new FlightTrail();
 const recordedTrail = new RecordedTrail(trailGroup);
@@ -96,15 +69,11 @@ const network = new BeamNetwork(asteroids.seed);
 beams.forEach((beam,index)=>{beam.pick.userData.beamIndex=index;});
 const weather = new SpaceWeather();
 const nominalPosition = new THREE.Vector3();
-const previousPosition = new THREE.Vector3();
 let currentInstability = weather.value;
 // Launch along the beam. Engine power controls future forces, never initial momentum.
 const initialRoute=flightRoute(state.phase,0,0);
 ship.position.copy(initialRoute);
 gravity.reset(ship.position,initialRoute.velocity);
-const direction=new THREE.Vector3(), shipAxis=new THREE.Vector3(1,0,0);
-const attitude=new ShipAttitude();
-const targetRotation=new THREE.Quaternion(),bankRotation=new THREE.Quaternion().setFromAxisAngle(shipAxis,-.16);
 const clock=new THREE.Clock();
 let currentDual=state.beamCount-1;
 let currentRadius=state.radius, cameraTransition=false;
@@ -119,7 +88,6 @@ function animate(){
  if(state.playing&&navigation.fuel>0)currentRadius=smoothControl(currentRadius,state.radius,dt);
  currentDual=THREE.MathUtils.damp(currentDual,state.beamCount-1,2,step);
  const r=currentRadius, a=state.phase;
- previousPosition.copy(ship.position);
  if(step>0)currentInstability=weather.advance(dt);
  navigation.exposure=network.exposure(journey.distance);
  navigation.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius,dt);
@@ -157,18 +125,7 @@ function animate(){
  $('score-output').textContent=Math.floor(score.total).toLocaleString('en-US');
  $('score-rate').textContent=`+${score.rate.toFixed(1)} pts / s`;
 
- if (step > 0) {
-   direction.copy(ship.position).sub(previousPosition);
-   direction.x += journeyStep * 2.8;
-   direction.normalize();
- } else if (state.elapsed === 0) {
-   direction.set(2.8,-Math.sin(a)*r*.45,Math.cos(a)*r*.45).normalize();
- }
- if(direction.lengthSq()>1e-8){
-  targetRotation.setFromUnitVectors(shipAxis,direction).multiply(bankRotation);
-  attitude.advance(ship.quaternion,targetRotation,dt);
- }
- exhaust.forEach((e,i)=>{e.scale.y=1+Math.sin(state.elapsed*32+i)*.07;e.material.opacity= .8*(state.playing?1:.55);});
+ // The station keeps its attitude as external forces bend its trajectory.
  const forwardDistance = journey.distance;
  if (step > 0 || flownTrail.samples.length === 0) flownTrail.record(forwardDistance, ship.position);
  recordedTrail.update(flownTrail.samples,forwardDistance);
