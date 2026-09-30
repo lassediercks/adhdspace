@@ -68,7 +68,8 @@ export class OrbitalGravity {
       const orbitalRadius=bodyClearance(body,radius)+5;
       const surfacePoint={x:body.x+radial.x*orbitalRadius,y:body.y+radial.y*orbitalRadius,z:body.z+radial.z*orbitalRadius};
       const g=gravitationalAcceleration(surfacePoint,[body],strength);
-      const speed=Math.sqrt(length(g)*orbitalRadius);
+      // Maneuvering thrusters keep a local orbit moving during calm weather.
+      const speed=Math.max(1.8,Math.sqrt(length(g)*orbitalRadius));
       guidance={x:0,y:0,z:0};
       for(const axis of AXES) {
         const targetVelocity=tangent[axis]/tangentLength*speed+(axis==='x'?(body.vx??0):0);

@@ -24,3 +24,9 @@
 .engine-lever input[type=range]::-moz-range-thumb{width:44px;height:17px;border-radius:3px;border:1px solid #c2e5d8;background:#a4d8c7;box-shadow:0 2px 6px #0005;cursor:ns-resize}
 .rescue-button{min-width:140px;padding:11px 8px}.scene-hint{bottom:calc(5% + 300px)}
 @media(max-width:650px){.fuel-panel{left:5%;right:auto}.control-row{display:flex;padding:18px;gap:18px}.engine-lever{width:90px}.engine-lever input[type=range]{height:130px}.engine-lever label{font-size:8px}.scene-hint{bottom:calc(5% + 285px)}.beam-choice{bottom:calc(5% + 310px);font-size:9px}}
+
+.refueling-notice { position:absolute; z-index:5; left:50%; top:43%; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:14px; color:#8dceff; pointer-events:none; text-shadow:0 2px 18px #061326; }
+.refueling-notice[hidden] { display:none; }
+.refueling-notice strong { font-size:clamp(28px,5vw,54px); letter-spacing:.16em; font-weight:600; }
+.refueling-notice progress { width:210px; height:5px; accent-color:#6bbcff; }
+.refueling-notice span { font-size:14px; letter-spacing:.12em; }

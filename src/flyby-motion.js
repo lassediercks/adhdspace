@@ -43,7 +43,7 @@ export function spawnAsteroid(id, seed, generation=0) {
   body.kind=!distant&&(id===7||random()<.12)?'station':'asteroid';
   if(body.kind==='station') {
     body.radius=Math.max(2.5,body.radius);body.mass=asteroidMass(body.radius);
-    body.avoidanceRadius=body.radius*1.025;body.colors=['#a4d8c7'];
+    body.avoidanceRadius=body.radius*1.025;body.colors=['#6bbcff'];
     body.spin=body.spin.map(value=>value*.25);
   }
   return body;

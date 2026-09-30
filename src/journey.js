@@ -1,3 +1,4 @@
+import { activeBodies } from './navigation.js';
 import { bodyClearance, gravitationalAcceleration } from './orbital-gravity.js';
 
 // Keep encounter time separate from forward journey progress. Captured flybys
@@ -8,6 +9,8 @@ export class Journey {
 
   advance(dt, position, velocity, asteroids, instability, radius, navigation = null) {
     if(dt<=0)return 0;
+    asteroids=activeBodies(asteroids,navigation);
+    if(this.orbit&&!asteroids.some(body=>body.id===this.orbit.id))this.orbit=null;
     if(this.orbit && (navigation?navigation.mode==='rescuing':instability<.35))this.orbit=null;
     if(!this.orbit && (instability>.7||navigation?.stationId!=null) && (!navigation||navigation.mode==='derailed')) {
       let candidate=null, nearest=Infinity;

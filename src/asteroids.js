@@ -1,3 +1,4 @@
+import { stationKey } from './navigation.js';
 import * as THREE from 'three';
 import { advanceFlyby, spawnAsteroid, ASTEROID_COUNT } from './flyby-motion.js';
 import { toonMaterial, facetedGeometry } from './toon-style.js';
@@ -29,6 +30,13 @@ function asteroidGeometry(definition, seed) {
 export class PassingAsteroids {
   constructor(scene, {seed=crypto.getRandomValues(new Uint32Array(1))[0]}={}) {
     this.seed=seed;
+    const pixels=new Uint8Array(32*32*4);
+    for(let y=0;y<32;y++)for(let x=0;x<32;x++){
+      const i=(y*32+x)*4,r=Math.hypot((x-15.5)/15.5,(y-15.5)/15.5);
+      pixels.set([255,255,255,Math.round(150*Math.max(0,1-r)**2)],i);
+    }
+    const glowTexture=new THREE.DataTexture(pixels,32,32);glowTexture.needsUpdate=true;
+    this.glowMaterial=new THREE.SpriteMaterial({map:glowTexture,color:0x4ba9ff,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false});
     this.travel = 0;
     this.sources = [];
     this.asteroids = Array.from({length:ASTEROID_COUNT},(_,index) => {
@@ -44,9 +52,19 @@ export class PassingAsteroids {
       const outline = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color:0x090f20, side:THREE.BackSide}));
       outline.scale.setScalar(1.025);
       surface.add(outline);
-      return { definition, group, surface, outline };
+      const glow=new THREE.Sprite(this.glowMaterial);group.add(glow);
+      const asteroid={definition,group,surface,outline,glow};
+      this.updateStationStyle(asteroid,definition);
+      return asteroid;
     });
     this.update(0);
+  }
+
+  updateStationStyle(asteroid,source) {
+    const station=source.kind==='station';
+    asteroid.glow.visible=station;asteroid.glow.scale.setScalar(source.radius*4);
+    asteroid.surface.material.emissive.setHex(station?0x2168a0:0);
+    asteroid.surface.material.emissiveIntensity=station?.55:0;
   }
 
   applySpawn(asteroid,source) {
@@ -55,6 +73,7 @@ export class PassingAsteroids {
     asteroid.surface.geometry=asteroid.outline.geometry=geometry;
     asteroid.surface.scale.setScalar(source.radius);
     asteroid.surface.material.color.set(source.colors[0]);
+    this.updateStationStyle(asteroid,source);
     asteroid.surface.rotation.set(0,0,.18+source.id*.23);
   }
 
@@ -69,7 +88,7 @@ export class PassingAsteroids {
     this.update(0);
   }
 
-  update(dt, shipPosition = {x:0,y:0,z:0}, progressRate = 1, spinDt = dt) {
+  update(dt, shipPosition = {x:0,y:0,z:0}, progressRate = 1, spinDt = dt, consumedStations = []) {
     this.travel+=dt*8;
     this.sources.length=0;
     this.asteroids.forEach(asteroid=>{
@@ -80,7 +99,8 @@ export class PassingAsteroids {
       asteroid.surface.rotation.x+=spinDt*source.spin[0];
       asteroid.surface.rotation.y+=spinDt*source.spin[1];
       asteroid.surface.rotation.z+=spinDt*source.spin[2];
-      this.sources.push(source);
+      asteroid.group.visible=!consumedStations.includes(stationKey(source));
+      if(asteroid.group.visible)this.sources.push(source);
     });
     return this.sources;
   }

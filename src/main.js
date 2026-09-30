@@ -1,5 +1,5 @@
 import { BeamNetwork, networkFlightRoute } from './beam-network.js';
-import { Navigation, RESCUE_FUEL, fuelBurnRate } from './navigation.js';
+import { Navigation, RESCUE_FUEL, REFUEL_SECONDS, fuelBurnRate } from './navigation.js';
 import { smoothControl } from './flight-controls.js';
 import { SpaceWeather } from './space-weather.js';
 import { SpaceBackdrop } from './space-backdrop.js';
@@ -84,7 +84,7 @@ const prediction = new PredictedPath(trailGroup);
 let predictionDirty=true, predictionCooldown=0, predictionBodies='';
 const asteroids = new PassingAsteroids(scene);
 const beams = Array.from({length:MAX_BEAMS},()=>new OccludedBeam(scene, asteroids.asteroids.length + 1));
-const beamObstacles = asteroids.asteroids.map(body=>body.outline);
+
 const gravity = new OrbitalGravity();
 const journey = new Journey();
 const navigation = new Navigation(asteroids.seed);
@@ -122,7 +122,8 @@ function animate(){
  const journeyStep=journey.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius,navigation);
  // Moving into/out of the local body frame preserves relative velocity.
  gravity.velocity.x+=8*(previousRate-journey.rate);
- const sources = asteroids.update(journeyStep, ship.position, journey.rate, step);
+ const sources = asteroids.update(journeyStep, ship.position, journey.rate, step, navigation.consumedStations);
+ const beamObstacles=asteroids.asteroids.filter(body=>body.group.visible).map(body=>body.outline);
  const centers=network.centers(journey.distance);
  beams.forEach((beam,index)=>{
   beam.core.visible=beam.rim.visible=beam.pick.visible=index<state.beamCount;
@@ -160,7 +161,7 @@ function animate(){
  if(predictionDirty||bodySignature!==predictionBodies||(step>0&&predictionCooldown>=.2)) {
   if(predictionDirty||bodySignature!==predictionBodies)prediction.invalidate();
   prediction.refresh({
-    position:gravity.position,velocity:gravity.velocity,journey,navigation,weather,network,bodies:sources,
+    position:gravity.position,velocity:gravity.velocity,journey,navigation,weather,network,bodies:asteroids.asteroids.map(body=>body.definition),
     flightSeconds:state.elapsed/state.speed,
     dual:currentDual,targetDual:state.beamCount-1,
     phase:state.phase,radius:currentRadius,targetRadius:state.radius,
@@ -206,7 +207,10 @@ function updateFuelIndicator(){
  $('fuel-meter').setAttribute('aria-valuenow',value);
  $('fuel-fill').style.height=`${navigation.fuel}%`;
  $('fuel-label').textContent=navigation.refueling?'REFUELING':'FUEL';
- const rate=(navigation.refueling?10-fuelBurnRate(currentRadius):-fuelBurnRate(currentRadius))*state.speed;
+ const rate=navigation.refueling?(100-navigation.refuelStartFuel)/REFUEL_SECONDS:-fuelBurnRate(currentRadius)*state.speed;
+ $('refueling-notice').hidden=!navigation.refueling;
+ $('refueling-progress').value=navigation.refuelElapsed;
+ $('refueling-time').textContent=`${Math.ceil(REFUEL_SECONDS-navigation.refuelElapsed)}s to full`;
  $('fuel-rate').textContent=`${rate>0?'+':'−'}${Math.abs(rate).toFixed(2)}% / s`;
 }
 function updateRescueControl(){

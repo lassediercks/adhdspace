@@ -1,6 +1,6 @@
 import { BeamNetwork, networkFlightRoute } from './beam-network.js';
 import { scheduledBeamCount } from './beam-schedule.js';
-import { Navigation } from './navigation.js';
+import { Navigation, activeBodies } from './navigation.js';
 import { smoothControl } from './flight-controls.js';
 import { SpaceWeather } from './space-weather.js';
 import { flightRoute } from './flight-route.js';
@@ -42,15 +42,16 @@ export function predictPath(snapshot, horizon=(snapshot.targetDual ? 30 : FORECA
     radius=smoothControl(radius,snapshot.targetRadius,FORECAST_STEP/snapshot.speed);
     instability=weather?weather.advance(FORECAST_STEP/snapshot.speed):smoothControl(instability,snapshot.targetInstability,FORECAST_STEP/snapshot.speed);
     if(navigation&&network)navigation.exposure=network.exposure(journey.distance);
-    navigation?.advance(FORECAST_STEP,physics.position,physics.velocity,bodies,instability,radius,FORECAST_STEP/snapshot.speed);
+    navigation?.advance(FORECAST_STEP,physics.position,physics.velocity,activeBodies(bodies,navigation),instability,radius,FORECAST_STEP/snapshot.speed);
     const previousRate=journey.rate;
     const travel=journey.advance(FORECAST_STEP,physics.position,physics.velocity,bodies,instability,radius,navigation);
     physics.velocity.x+=8*(previousRate-journey.rate);
     bodies=bodies.map(body=>advanceFlyby(body,travel,physics.position,journey.rate));
-    const body=journey.orbit&&bodies.find(body=>body.id===journey.orbit.id);
+    const sources=activeBodies(bodies,navigation);
+    const body=journey.orbit&&sources.find(body=>body.id===journey.orbit.id);
     const route={phase,radius,dual,network,distance:journey.distance,forwardSpeed:journey.rate*2.8};
     const target=network?networkFlightRoute(phase,radius,dual,network,journey.distance,route.forwardSpeed):flightRoute(phase,radius,dual);
-    physics.advance(FORECAST_STEP,target,bodies,instability,radius,body?{body,normal:journey.orbit.normal}:null,route,navigation);
+    physics.advance(FORECAST_STEP,target,sources,instability,radius,body?{body,normal:journey.orbit.normal}:null,route,navigation);
     if(i%2===0)points.push(physics.position.x+journey.distance-snapshot.journey.distance,physics.position.y,physics.position.z);
   }
   return new Float32Array(points);

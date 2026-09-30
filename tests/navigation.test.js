@@ -59,7 +59,7 @@ test('loss of lock persists through calm weather and high coherence until rescue
 test('captured asteroid releases only for rescue, not a calm weather interval',()=>{
  const journey=new Journey();journey.orbit={id:1,normal:{x:1,y:0,z:0}};
  const navigation=new Navigation();navigation.mode='derailed';
- journey.advance(1,origin,origin,[],0,0,navigation);assert.ok(journey.orbit);
+ journey.advance(1,origin,origin,[{id:1,x:15,y:0,z:0,radius:3,mass:3}],0,0,navigation);assert.ok(journey.orbit);
  navigation.rescue();journey.advance(1,origin,origin,[],0,0,navigation);
  assert.equal(journey.orbit,null);assert.ok(journey.rate>0);
 });
