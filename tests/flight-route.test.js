@@ -27,8 +27,8 @@ test('figure eight encloses each beam with opposite winding and a smooth crossin
  assert.ok(Math.hypot(a.velocity.y,a.velocity.z)>1);
 });
 
-test('finite thrust tracks a complete figure eight at maximum radius',()=>{
- const physics=new OrbitalGravity(), radius=7, dt=1/120;
+test('finite thrust tracks a complete figure eight with engines at twenty percent',()=>{
+ const physics=new OrbitalGravity(), radius=5.6, dt=1/120;
  const initial=flightRoute(0,radius,1);physics.reset(initial,initial.velocity);
  for(let t=dt;t<28;t+=dt) {
   const phase=t*.45,target=flightRoute(phase,radius,1);
@@ -128,7 +128,7 @@ test('3–10 beams form regular polygons with fixed edge spacing',()=>{
 
 test('polygon routes orbit each beam, close smoothly, and stay within engine authority',()=>{
  for(let count=3;count<=10;count++) {
-  const physics=new OrbitalGravity(),radius=7,dual=count-1;
+  const physics=new OrbitalGravity(),radius=5.6,dual=count-1;
   const initial=flightRoute(0,radius,dual);physics.reset(initial,initial.velocity);
   const dt=1/60,seconds=count*4*Math.PI/.45;
   for(let i=1;i<=Math.ceil(seconds/dt);i++) {

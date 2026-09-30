@@ -40,7 +40,7 @@ Or run `just dev`. Vite prints the selected port and automatically tries the nex
 
 The flight controls are a vertical **Stabilizer engines** lever and **Rescue boost**. Pull the lever up for stronger stabilization and down to conserve fuel. Drag to orbit the ship-centered camera and scroll to zoom. Reload starts a new flight.
 
-Stabilizer power starts at 100%. Higher stabilizer power narrows the orbit and protects beam lock; 100% follows the beams directly but still transfers between them. Stabilizer changes ease over roughly ten seconds, with smooth heading changes and an easing forecast line.
+Stabilizer power starts at 100%. Higher stabilizer power narrows the orbit and protects beam lock; 100% follows the beams directly but still transfers between them. At 0%, beam guidance shuts off and the ship coasts under gravity rather than orbiting a beam. An empty tank stops scoring and disables the lever; Restart flight resets the run. Stabilizer changes ease over roughly ten seconds, with smooth heading changes and an easing forecast line.
 
 Full engine power burns a full tank in 30 seconds. The first blue station is visible from the start, 552 units ahead, reaching approach range around 40–46 seconds during normal travel. Completed refuels reveal the next station 180 units ahead, aligned with the beam route; missed stations receive replacements at low fuel. Blue glows remain legible at long range. Lower power on approach to dock; charging takes 10 seconds, restores guidance, and consumes the station.
 

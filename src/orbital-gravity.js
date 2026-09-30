@@ -1,5 +1,5 @@
 import { networkFlightRoute } from './beam-network.js';
-import { derailmentRisk } from './flight-controls.js';
+import { derailmentRisk, beamGuidanceStrength } from './flight-controls.js';
 import { flightRoute } from './flight-route.js';
 // Newtonian test-particle dynamics in a frame translating at constant velocity.
 // Planets follow prescribed flybys; orbit guidance and avoidance are explicit
@@ -77,7 +77,7 @@ export class OrbitalGravity {
       }
     }
     const disruption=Math.min(1,derailmentRisk(strength,radius)*(navigation?.exposure??1));
-    const lock=navigation?.lock??1;
+    const lock=(navigation?.lock??1)*(navigation?.fuel===0?0:beamGuidanceStrength(radius));
     limit(guidance,rescuing?24:MAX_GUIDANCE_ACCELERATION*(orbit?1:1-.9*disruption));
     if(!orbit||rescuing) {
       const compensation=limit({x:-acceleration.x,y:-acceleration.y,z:-acceleration.z},MAX_AVOIDANCE_ACCELERATION);
