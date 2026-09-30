@@ -53,11 +53,11 @@ test('a station refuels in ten seconds, disappears, and releases forward progres
   physics.advance(dt,flightRoute(phase,radius),sources,0,radius,orbit,{phase,radius,dual:0},nav);
  }
  for(let i=0;i<1800;i++)advance();
- assert.equal(nav.mode,'derailed');assert.equal(nav.refueling,false);
+ assert.equal(nav.mode,'tracking');assert.equal(nav.refueling,false);
  assert.ok(nav.fuel>98);assert.equal(journey.rate,1);assert.equal(journey.orbit,null);
  assert.equal(activeBodies([body],nav).length,0);
- assert.ok(nav.rescue());
- for(let i=0;i<2400&&nav.mode==='rescuing';i++)advance();
+ assert.equal(nav.rescue(),false);
+ for(let i=0;i<120;i++)advance();
  assert.equal(nav.mode,'tracking');assert.equal(journey.orbit,null);
 });
 
@@ -112,4 +112,34 @@ test('a head-on station capture has a nonzero orbit tangent at zero engine power
  const physics=new OrbitalGravity();physics.reset(origin,origin);
  for(let i=0;i<600;i++)physics.advance(1/60,flightRoute(0,7),[body],0,7,{body,normal:n},null,nav);
  assert.ok(Math.hypot(physics.velocity.y,physics.velocity.z)>.5);
+});
+
+
+test('completed refueling restores smooth stabilization without carrying old derailment risk',()=>{
+ const nav=new Navigation(),physics=new OrbitalGravity(),journey=new Journey();
+ nav.mode='derailed';nav.lock=0;nav.fuel=20;nav.hazard=nav.threshold+1;
+ const station={id:7,kind:'station',x:15,y:0,z:0,radius:3,mass:3,vx:0};
+ physics.reset({x:0,y:7,z:0},{x:0,y:0,z:1.8});
+ let phase=0,radius=7;
+ for(let i=0;i<599;i++)nav.advance(1/40,physics.position,physics.velocity,[station],0,radius,1/60);
+ assert.equal(nav.mode,'derailed');assert.equal(nav.lock,0);
+ const position={...physics.position},velocity={...physics.velocity};
+ nav.advance(1/40,physics.position,physics.velocity,[station],0,radius,1/60);
+ assert.equal(nav.mode,'tracking');assert.equal(nav.hazard,0);assert.ok(nav.immunity>11);
+ assert.ok(nav.lock>0&&nav.lock<.03);
+ assert.deepEqual(physics.position,position);assert.deepEqual(physics.velocity,velocity);
+ // Turn engines up to 100% through the same smoothing used in live flight.
+ let largestStep=0;
+ for(let i=0;i<2400;i++){
+  const dt=1/60;phase+=dt*.45;radius*=Math.exp(-.3*dt/1.5);
+  const bodies=activeBodies([station],nav);
+  nav.advance(dt,physics.position,physics.velocity,bodies,0,radius,dt/1.5);
+  journey.advance(dt,physics.position,physics.velocity,bodies,0,radius,nav);
+  const before={...physics.position};
+  physics.advance(dt,flightRoute(phase,radius),bodies,0,radius,null,{phase,radius,dual:0},nav);
+  largestStep=Math.max(largestStep,Math.hypot(physics.position.x-before.x,physics.position.y-before.y,physics.position.z-before.z));
+ }
+ assert.equal(nav.mode,'tracking');assert.ok(nav.lock>.99);
+ assert.ok(Math.hypot(physics.position.y,physics.position.z)<.1);
+ assert.ok(largestStep<.2);
 });

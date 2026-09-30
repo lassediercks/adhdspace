@@ -10,7 +10,7 @@ export const RESCUE_COOLDOWN=30;
 export const fuelBurnRate=radius=>.02+.38*(1-Math.max(0,Math.min(1,radius/7)))**2;
 
 // Seeded accumulated encounter risk is frame-rate independent and forecastable.
-// Losing lock disables return guidance until the pilot explicitly requests rescue.
+// Losing lock disables return guidance until rescue or a completed station service.
 export class Navigation {
   constructor(seed=31) { this.seed=seed>>>0;this.reset(); }
   reset() {
@@ -49,6 +49,9 @@ export class Navigation {
         this.fuel=this.refuelStartFuel+(100-this.refuelStartFuel)*this.refuelElapsed/REFUEL_SECONDS;
         if(this.refuelElapsed>=REFUEL_SECONDS-1e-9){
           this.fuel=100;this.consumedStations.push(key);this.stationId=null;this.refueling=false;
+          // A serviced ship can steer again. Keep momentum and ease lock back
+          // in below; stale encounter risk must not immediately derail departure.
+          this.mode='tracking';this.hazard=0;this.immunity=12;
         }
         break;
       }
