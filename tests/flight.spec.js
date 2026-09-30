@@ -10,6 +10,9 @@ async function seedField(page,seed=31) {
 test('flight offers only coherence and rescue, with read-only weather and an always-on trail',async({page})=>{
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
  await seedField(page);await page.goto('http://127.0.0.1:5173');
+ await expect(page.locator('#score-output')).toBeVisible();
+ await expect.poll(async()=>Number((await page.locator('#score-output').textContent()).replaceAll(',',''))).toBeGreaterThan(0);
+ await expect(page.locator('#score-rate')).toHaveText(/\+[0-9]+\.[0-9] pts \/ s/);
  await expect(page.locator('canvas')).toBeVisible();await expect(page.locator('#error')).toBeHidden();
  const controls=page.getByRole('region',{name:'Flight controls'});
  await expect(controls.getByRole('slider')).toHaveCount(1);

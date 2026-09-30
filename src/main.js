@@ -1,3 +1,4 @@
+import { FlightScore } from './flight-score.js';
 import { BeamNetwork, networkFlightRoute } from './beam-network.js';
 import { Navigation, RESCUE_FUEL, REFUEL_SECONDS, fuelBurnRate } from './navigation.js';
 import { smoothControl } from './flight-controls.js';
@@ -87,6 +88,7 @@ const beams = Array.from({length:MAX_BEAMS},()=>new OccludedBeam(scene, asteroid
 
 const gravity = new OrbitalGravity();
 const journey = new Journey();
+const score = new FlightScore();
 const navigation = new Navigation(asteroids.seed);
 const network = new BeamNetwork(asteroids.seed);
 beams.forEach((beam,index)=>{beam.pick.userData.beamIndex=index;});
@@ -144,6 +146,13 @@ function animate(){
  nominalPosition.copy(target);
  const offset = gravity.advance(step, target, sources, currentInstability, currentRadius, orbit, route, navigation);
  ship.position.set(nominalPosition.x + offset.x, nominalPosition.y + offset.y, nominalPosition.z + offset.z);
+ score.advance(state.playing?dt:0,ship.position,beams.slice(0,state.beamCount).map((beam,index)=>({
+   center:centers[index],direction:network.direction(index),intervals:beam.intervals??[],
+   opacity:network.opacity(index,journey.distance),
+ })));
+ $('score-output').textContent=Math.floor(score.total).toLocaleString('en-US');
+ $('score-rate').textContent=`+${score.rate.toFixed(1)} pts / s`;
+
  if (step > 0) {
    direction.copy(ship.position).sub(previousPosition);
    direction.x += journeyStep * 2.8;

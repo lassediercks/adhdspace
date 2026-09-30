@@ -30,3 +30,9 @@
 .refueling-notice strong { font-size:clamp(28px,5vw,54px); letter-spacing:.16em; font-weight:600; }
 .refueling-notice progress { width:210px; height:5px; accent-color:#6bbcff; }
 .refueling-notice span { font-size:14px; letter-spacing:.12em; }
+
+.score-panel { position:absolute; left:50%; top:28px; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:5px; pointer-events:none; font-variant-numeric:tabular-nums; color:var(--mint); }
+.score-panel>span { font-size:8px; letter-spacing:1.5px; color:#96a5a8; }
+#score-output { font-size:26px; font-weight:500; }
+#score-rate { font-size:10px; color:#96a5a8; }
+@media(max-width:650px){.score-panel{top:20px}#score-output{font-size:22px}}
