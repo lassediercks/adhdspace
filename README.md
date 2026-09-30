@@ -36,22 +36,21 @@ npm run dev
 
 Or run `just dev`. Vite prints the selected port and automatically tries the next port if its default is occupied. `npm run build` creates the production assets in `dist/`.
 
-## Controls
+## Flight
 
-- Drag to orbit the camera; scroll to zoom.
-- Pause/resume with the play button or Space.
-- Adjust the orbit radius with the slider. Flight speed is fixed at 1.5×.
-- A randomized field of 20 asteroids are always present and pass at a constant speed, ranging from small nearby fragments to large, distant boulders, with occasional natural beam intersections. New spawns independently vary their spacing, lateral positions, sizes, jagged silhouettes, muted stone tones, and tumble rates. Each page load gets a fresh seed; reset replays that field. Distant rocks and a deep starfield remain visible out to thousands of scene units. Instability controls only their gravitational pull: 0% means no attraction; higher settings increase the pull. Collision avoidance remains active at every setting.
-- The camera stays centered on the ship throughout orbiting, beam transfers, and asteroid capture. Drag and zoom freely; following preserves your viewing angle and distance. Reset restores the default view around the ship.
-- At 100% instability, gravity can overpower the ship’s limited guidance thrust and capture it around an asteroid. Forward travel then eases to a halt; local orbital motion and the recorded trail continue. Lower instability below 35% or reset to continue the journey.
-- Toggle the flight trail, or press R to reset the flight settings.
-- Reduced-motion preferences start the flight paused.
+The flight controls are **Coherence** and **Rescue boost**. Drag to orbit the ship-centered camera and scroll to zoom. Reload starts a new flight.
 
-The spacecraft is a Newtonian test particle: asteroids use a spherical mass approximation with inverse-square gravity outside their bounding spheres, and mass scales with radius cubed: doubling radius gives eight times the pull at the same center-to-center distance. Instability scales gravitational strength globally. Stable guidance anticipates and counters gravity; above 35% that compensation and steering authority progressively weaken. At 100%, random asteroid encounters frequently derail the route. The forecast uses these same forces and steering rules. Position and velocity are integrated using kick–drift–kick steps no larger than 1/240 simulated second. The instability slider scales gravitational strength; it does not change planet visibility, size, or flyby speed. Orbit guidance has finite thrust, so strong encounters can eject the ship from its beam orbit. Avoidance is a separate braking thruster, leaving room for the hull and selected orbit radius; positions are never projected or teleported to enforce clearance.
+Coherence starts at 43%. Higher coherence narrows the orbit and protects beam lock; 100% follows the beams directly but still transfers between them. Coherence changes ease over roughly ten seconds, with smooth heading changes and an easing forecast line.
 
-This is a controlled simulation in illustrative units, not a full N-body model: asteroids have prescribed trajectories and the beam orbit is maintained by thrusters. A bound close encounter switches to a local asteroid reference frame. Forward journey progress stops while the ship's physics continue, and the captured asteroid is retained. The camera follows the ship smoothly. Reset clears the encounter and flight history.
+Instability is automatic space weather, shown on the right. It follows a seeded mean-reverting, bell-shaped process around 50%, with rare pulses to 0% or 100%. High coherence greatly reduces derailment risk but does not eliminate it. The seeded risk process is shared with the forecast. Lost lock persists even when weather calms or coherence is raised. **Rescue boost** applies finite thrust to return to the primary beam, without teleporting or erasing history.
 
-A soft blue line forecasts the next 14 simulated seconds using a separate copy of the same gravity, avoidance, capture, and asteroid spawning logic. Its physics run in a Web Worker to keep rendering smooth. It refreshes as the world moves and immediately when settings or spawned bodies change. The brighter trail records actual world positions, including local orbital motion when forward travel is stopped. Changing radius never reshapes its history. The beam stops at asteroid entry surfaces and resumes beyond their exit surfaces, updating as the irregular rocks tumble. Scene assets are procedural; no model downloads are required. Fonts use Google Fonts with local fallbacks.
+A new beam appears every 30 seconds of active flight, starting with one and capped at ten. Three form a triangle, four a square, and larger counts form regular polygons. Adjacent beam spacing is always 8 units, independent of coherence. The forecast includes upcoming additions.
+
+Asteroids use inverse-square gravity outside their bounding spheres and mass proportional to radius cubed. Position and velocity use kick–drift–kick integration at up to 240 substeps per simulated second. Guidance and collision avoidance are explicit thruster forces. This is an illustrative controlled simulation, not a full N-body model. Asteroid capture stops forward progress until rescue, while local motion continues.
+
+A soft blue line forecasts 14–30 simulated seconds in a Web Worker using cloned physics, navigation, weather, and spawn state. The amber past trail is always visible, never fades with age, and retains the entire flight until reload. Its append-only GPU chunks preserve history without rewriting all prior points every frame. Distant points can leave the camera's view without being deleted. Beams stop at actual asteroid silhouettes and resume behind them.
+
+The background has 4,850 stars across three depth layers and 22 muted low-poly distant planets. Their parallax follows journey progress and stops during capture. Distant planets are scenery; passing asteroids provide gravitational encounters. Assets are procedural, with Google Fonts and local font fallbacks.
 
 The force law and flyby behavior follow [NASA's explanation of gravitational acceleration](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/free-falling-objects/) and [gravity-assist mechanics](https://science.nasa.gov/learn/basics-of-space-flight/primer/).
 
@@ -73,12 +72,3 @@ The workflow in `.github/workflows/deploy.yml` tests, builds, and deploys on pus
 
 Deployment follows the [Vite GitHub Pages guide](https://vite.dev/guide/static-deploy.html#github-pages).
 
-## Beams, coherence, and trail
-
-Use **+ / −** for 1–10 parallel beams. Three form an equilateral triangle, four a square, and 5–10 form regular polygons when viewed along the beam direction. Adjacent beams stay 8 scene units apart, independent of coherence. The first beam remains anchored at the origin. Two beams retain the figure eight; larger layouts orbit each vertex and smoothly transfer to the next, including the closing edge. Changes steer the ship toward the new route. Reset restores one beam.
-
-**Coherence** controls the orbit width: 0% means radius 7; 100% means radius 0. At 100%, the ship still transfers smoothly between active beams without looping around them. With one beam, it flies straight along it. The default is 43% coherence (radius 3.99) and 0% instability. Refresh and reset synchronize the slider thumbs, labels, and physics to these same defaults.
-
-The mint beams, soft blue forecast, and amber recorded trail are visually distinct. The recorded trail retains the entire session without aging or distance fade; reset/reload clears it. Append-only rendering chunks keep old points intact without rewriting the full trail every frame. Distant history can leave the camera's view, but is not deleted.
-
-The background uses 4,850 stars across three depth layers plus 22 muted, low-poly distant planets. Their parallax follows journey progress and stops during pause or asteroid capture. These distant planets are scenery; passing asteroids remain the gravitational encounter bodies.

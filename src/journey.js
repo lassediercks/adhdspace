@@ -6,10 +6,10 @@ export class Journey {
   constructor() { this.reset(); }
   reset() { this.rate=1; this.distance=0; this.orbit=null; }
 
-  advance(dt, position, velocity, asteroids, instability, radius) {
+  advance(dt, position, velocity, asteroids, instability, radius, navigation = null) {
     if(dt<=0)return 0;
-    if(this.orbit && instability<.35)this.orbit=null;
-    if(!this.orbit && instability>.7) {
+    if(this.orbit && (navigation?navigation.mode==='rescuing':instability<.35))this.orbit=null;
+    if(!this.orbit && instability>.7 && (!navigation||navigation.mode==='derailed')) {
       let candidate=null, nearest=Infinity;
       for(const body of asteroids) {
         const relative={x:position.x-body.x,y:position.y-body.y,z:position.z-body.z};

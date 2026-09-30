@@ -1,3 +1,7 @@
+import { scheduledBeamCount } from './beam-schedule.js';
+import { Navigation } from './navigation.js';
+import { smoothControl } from './flight-controls.js';
+import { SpaceWeather } from './space-weather.js';
 import { SpaceBackdrop } from './space-backdrop.js';
 import { flightRoute, beamCenter, MAX_BEAMS } from './flight-route.js';
 import './style.css';
@@ -13,8 +17,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const $ = (id) => document.getElementById(id);
-const DEFAULT_FLIGHT = Object.freeze({speed:1.5,coherence:43,radius:7*(1-43/100),instability:0,phase:1.05,elapsed:0,trail:true,beamCount:1});
-const state = {playing:!matchMedia('(prefers-reduced-motion: reduce)').matches,...DEFAULT_FLIGHT};
+const DEFAULT_FLIGHT = Object.freeze({speed:1.5,coherence:43,radius:7*(1-43/100),phase:1.05,elapsed:0,beamCount:1});
+const state = {playing:true,...DEFAULT_FLIGHT};
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -83,27 +87,35 @@ const beams = Array.from({length:MAX_BEAMS},()=>new OccludedBeam(scene, asteroid
 const beamObstacles = asteroids.asteroids.map(body=>body.outline);
 const gravity = new OrbitalGravity();
 const journey = new Journey();
+const navigation = new Navigation(asteroids.seed);
+const weather = new SpaceWeather(asteroids.seed^0x5f3759df);
 const nominalPosition = new THREE.Vector3();
 const previousPosition = new THREE.Vector3();
-let currentInstability = 0;
-ship.position.set(0, Math.cos(state.phase) * state.radius, Math.sin(state.phase) * state.radius);
-gravity.reset(ship.position, {x:0,y:-ship.position.z*.45,z:ship.position.y*.45});
+let currentInstability = weather.value;
+const initialRoute=flightRoute(state.phase,state.radius,state.beamCount-1);
+ship.position.copy(initialRoute);
+gravity.reset(ship.position,initialRoute.velocity);
 const direction=new THREE.Vector3(), shipAxis=new THREE.Vector3(1,0,0);
+const targetRotation=new THREE.Quaternion(),bankRotation=new THREE.Quaternion().setFromAxisAngle(shipAxis,-.16);
 const clock=new THREE.Clock();
-let currentDual=0;
+let currentDual=state.beamCount-1;
 let currentRadius=state.radius, cameraTransition=false;
 function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.05);
  const step=state.playing?dt*state.speed:0;
  state.elapsed+=step;state.phase+=step*.45;
- if(state.playing)currentRadius=THREE.MathUtils.damp(currentRadius,state.radius,4,dt);
+ const beamCount=scheduledBeamCount(state.elapsed/state.speed);
+ if(beamCount!==state.beamCount){state.beamCount=beamCount;predictionDirty=true;}
+ if(state.playing)currentRadius=smoothControl(currentRadius,state.radius,dt);
  currentDual=THREE.MathUtils.damp(currentDual,state.beamCount-1,2,step);
  const r=currentRadius, a=state.phase;
  previousPosition.copy(ship.position);
- if (step > 0) currentInstability = THREE.MathUtils.damp(currentInstability, state.instability / 100, 3, step);
+ if(step>0)currentInstability=weather.advance(dt);
+ navigation.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius);
+ updateRescueControl();updateWeatherIndicator();
  const previousRate=journey.rate;
- const journeyStep=journey.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius);
+ const journeyStep=journey.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius,navigation);
  // Moving into/out of the local body frame preserves relative velocity.
  gravity.velocity.x+=8*(previousRate-journey.rate);
  const sources = asteroids.update(journeyStep, ship.position, journey.rate, step);
@@ -116,7 +128,7 @@ function animate(){
  const route={phase:a,radius:r,dual:currentDual};
  const target=flightRoute(a,r,currentDual);
  nominalPosition.copy(target);
- const offset = gravity.advance(step, target, sources, currentInstability, currentRadius, orbit, route);
+ const offset = gravity.advance(step, target, sources, currentInstability, currentRadius, orbit, route, navigation);
  ship.position.set(nominalPosition.x + offset.x, nominalPosition.y + offset.y, nominalPosition.z + offset.z);
  if (step > 0) {
    direction.copy(ship.position).sub(previousPosition);
@@ -125,8 +137,10 @@ function animate(){
  } else if (state.elapsed === 0) {
    direction.set(2.8,-Math.sin(a)*r*.45,Math.cos(a)*r*.45).normalize();
  }
- ship.quaternion.setFromUnitVectors(shipAxis,direction);
- ship.rotateX(-.16);
+ if(direction.lengthSq()>1e-8){
+  targetRotation.setFromUnitVectors(shipAxis,direction).multiply(bankRotation);
+  ship.quaternion.slerp(targetRotation,1-Math.exp(-dt*5));
+ }
  exhaust.forEach((e,i)=>{e.scale.y=1+Math.sin(state.elapsed*32+i)*.07;e.material.opacity= .8*(state.playing?1:.55);});
  const forwardDistance = journey.distance;
  if (step > 0 || flownTrail.samples.length === 0) flownTrail.record(forwardDistance, ship.position);
@@ -136,14 +150,15 @@ function animate(){
  if(predictionDirty||bodySignature!==predictionBodies||(step>0&&predictionCooldown>=.2)) {
   if(predictionDirty||bodySignature!==predictionBodies)prediction.invalidate();
   prediction.refresh({
-    position:gravity.position,velocity:gravity.velocity,journey,bodies:sources,
+    position:gravity.position,velocity:gravity.velocity,journey,navigation,weather,bodies:sources,
+    flightSeconds:state.elapsed/state.speed,
     dual:currentDual,targetDual:state.beamCount-1,
     phase:state.phase,radius:currentRadius,targetRadius:state.radius,
-    instability:currentInstability,targetInstability:state.instability/100,speed:state.speed,
+    instability:currentInstability,targetInstability:currentInstability,speed:state.speed,
   },state.elapsed);
   predictionDirty=false;predictionCooldown=0;predictionBodies=bodySignature;
  }
- prediction.follow(ship.position,journey.distance,state.elapsed);
+ prediction.follow(ship.position,journey.distance,state.elapsed,dt);
  backdrop.advance(journeyStep*2.8);
  // Translate the camera with the ship, preserving the user's orbit and zoom.
  // Target the ship every frame, including beam transfers and asteroid capture.
@@ -158,56 +173,36 @@ function animate(){
  controls.update();
  renderer.render(scene, camera);
 }
-function updatePlayback(){
- $('play').setAttribute('aria-label',state.playing?'Pause flight':'Resume flight');
- $('pause-icon').innerHTML=state.playing?'<path d="M8 6v12M16 6v12" stroke="currentColor" stroke-width="2.5"/>':'<path d="m8 5 11 7-11 7Z" fill="currentColor"/>';
+function syncCoherence(){
+ const input=$('coherence');input.value=state.coherence;
+ input.style.setProperty('--fill',`${state.coherence}%`);
+ $('coherence-output').textContent=`${state.coherence}%`;
 }
-$('play').addEventListener('click',()=>{state.playing=!state.playing;updatePlayback();});
-function updateSlider(input){input.style.setProperty('--fill',`${(input.value-input.min)/(input.max-input.min)*100}%`);}
-function syncSliders(){
- for(const id of ['coherence','instability']) {
-  const input=$(id);input.value=state[id];
-  updateSlider(input);$(`${id}-output`).textContent=`${state[id]}%`;
- }
-}
-for(const id of ['coherence','instability']){
- $(id).addEventListener('input',()=>{
-  predictionDirty=true;state[id]=Number($(id).value);
-  if(id==='coherence')state.radius=7*(1-state.coherence/100);
-  syncSliders();
- });
-}
-// Browsers can restore form values independently of a fresh simulation.
-// Reconcile on startup and pageshow (including back/forward cache restores).
-syncSliders();
-window.addEventListener('pageshow',syncSliders);
-controls.addEventListener('start',()=>{cameraTransition=false;});
-function updateBeamControls(){
- $('beam-count').textContent=state.beamCount;
- $('remove-beam').disabled=state.beamCount===1;
- $('add-beam').disabled=state.beamCount===MAX_BEAMS;
-}
-for(const [id,delta] of [['remove-beam',-1],['add-beam',1]])$(id).addEventListener('click',()=>{
- state.beamCount=THREE.MathUtils.clamp(state.beamCount+delta,1,MAX_BEAMS);
- predictionDirty=true;updateBeamControls();
+$('coherence').addEventListener('input',()=>{
+ state.coherence=Number($('coherence').value);state.radius=7*(1-state.coherence/100);
+ predictionDirty=true;syncCoherence();
 });
-updateBeamControls();
-$('trail').addEventListener('click',()=>{state.trail=!state.trail;trailGroup.visible=state.trail;$('trail').setAttribute('aria-checked',state.trail);});
-function reset(){
- Object.assign(state,DEFAULT_FLIGHT);
- currentDual=0;currentInstability=0;currentRadius=state.radius;predictionDirty=true;
- backdrop.reset();journey.reset();flownTrail.clear();recordedTrail.clear();asteroids.reset();
- ship.position.set(0,Math.cos(state.phase)*state.radius,Math.sin(state.phase)*state.radius);
- gravity.reset(ship.position,{x:0,y:-ship.position.z*.45,z:ship.position.y*.45});
- trailGroup.visible=true;$('trail').setAttribute('aria-checked','true');
- syncSliders();updateBeamControls();cameraTransition=true;updatePlayback();
+syncCoherence();window.addEventListener('pageshow',syncCoherence);
+controls.addEventListener('start',()=>{cameraTransition=false;});
+function updateWeatherIndicator(){
+ const value=Math.round(currentInstability*100);
+ $('instability-output').textContent=`${value}%`;
+ $('instability-meter').setAttribute('aria-valuenow',value);
+ $('weather-fill').style.height=`${value}%`;
 }
-$('reset').addEventListener('click',reset);
+function updateRescueControl(){
+ const button=$('rescue');button.disabled=navigation.mode!=='derailed';
+ button.textContent=navigation.mode==='rescuing'?'Boosting…':'Rescue boost';
+ button.title=navigation.mode==='derailed'?'Beam lock lost — boost back to the primary beam':'Available when beam lock is lost';
+}
+$('rescue').addEventListener('click',()=>{
+ if(navigation.rescue()){predictionDirty=true;updateRescueControl();}
+});
+updateRescueControl();updateWeatherIndicator();
 $('info-button').addEventListener('click',()=>$('info-dialog').showModal());
 $('close-info').addEventListener('click',()=>$('info-dialog').close());
 $('resume-exploring').addEventListener('click',()=>$('info-dialog').close());
 $('info-dialog').addEventListener('click',e=>{if(e.target===$('info-dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
-window.addEventListener('keydown',e=>{if(['INPUT','BUTTON','A'].includes(document.activeElement.tagName)||$('info-dialog').open)return;if(e.code==='Space'){e.preventDefault();$('play').click();}if(e.key.toLowerCase()==='r')reset();});
 function resize(){const w=innerWidth,h=$('app').clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
 window.addEventListener('resize',resize);
-updatePlayback();animate();
+animate();

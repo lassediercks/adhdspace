@@ -1,3 +1,4 @@
+import { derailmentRisk } from './flight-controls.js';
 import { flightRoute } from './flight-route.js';
 // Newtonian test-particle dynamics in a frame translating at constant velocity.
 // Planets follow prescribed flybys; orbit guidance and avoidance are explicit
@@ -20,7 +21,7 @@ export function bodyClearance(body, orbitRadius) {
 
 export function gravitationalAcceleration(position, asteroids, instability) {
   const strength = Math.max(0, Math.min(1, instability));
-  // Only gravitational strength changes with the slider. Guidance stays fixed.
+  // Space weather scales gravity; coherence separately governs navigation.
   const G = 140 * strength * strength / (1 - 0.85 * strength);
   const acceleration = { x: 0, y: 0, z: 0 };
   for (const body of asteroids) {
@@ -44,16 +45,18 @@ export class OrbitalGravity {
     this.offset = {x:0,y:0,z:0};
   }
 
-  acceleration(position, velocity, nominal, asteroids, strength, radius, orbit) {
+  acceleration(position, velocity, nominal, asteroids, strength, radius, orbit, navigation = null) {
     const acceleration = gravitationalAcceleration(position, asteroids, strength);
     // Omitted radius means an unpowered test particle; zero is guided beam flight.
     if (radius == null) return acceleration;
+    const rescuing=navigation?.mode==='rescuing';
+    if(rescuing)nominal={x:0,y:0,z:0,velocity:{x:0,y:0,z:0},acceleration:{x:0,y:0,z:0}};
     let guidance = {
       x: -0.8 * position.x - 1.5 * velocity.x,
       y: (nominal.acceleration?.y ?? -OMEGA * OMEGA * nominal.y) + 0.8 * (nominal.y-position.y) + 1.5 * ((nominal.velocity?.y ?? -OMEGA*nominal.z)-velocity.y),
       z: (nominal.acceleration?.z ?? -OMEGA * OMEGA * nominal.z) + 0.8 * (nominal.z-position.z) + 1.5 * ((nominal.velocity?.z ?? OMEGA*nominal.y)-velocity.z),
     };
-    if(orbit) {
+    if(orbit&&!rescuing) {
       const body=asteroids.find(p=>p.id===orbit.body.id)??orbit.body;
       const radial={x:position.x-body.x,y:position.y-body.y,z:position.z-body.z};
       const distance=Math.max(length(radial),.001);
@@ -71,18 +74,17 @@ export class OrbitalGravity {
         guidance[axis]=.8*(surfacePoint[axis]-position[axis])+1.5*(targetVelocity-velocity[axis]);
       }
     }
-    // Finite engine authority: sufficiently strong gravity can overpower it.
-    // Stable navigation anticipates the field and counters it with thrusters.
-    // Instability progressively removes that compensation and steering authority;
-    // random asteroid encounters then determine when gravity derails the route.
-    const t=Math.max(0,Math.min(1,(strength-.35)/.65));
-    const disruption=t*t*(3-2*t);
-    limit(guidance, orbit ? MAX_GUIDANCE_ACCELERATION : MAX_GUIDANCE_ACCELERATION*(1-.9*disruption));
-    if(!orbit) {
+    const disruption=derailmentRisk(strength,radius);
+    const lock=navigation?.lock??1;
+    limit(guidance,rescuing?24:MAX_GUIDANCE_ACCELERATION*(orbit?1:1-.9*disruption));
+    if(!orbit||rescuing) {
       const compensation=limit({x:-acceleration.x,y:-acceleration.y,z:-acceleration.z},MAX_AVOIDANCE_ACCELERATION);
-      for(const axis of AXES)guidance[axis]+=compensation[axis]*(1-disruption);
+      for(const axis of AXES) {
+        guidance[axis]*=rescuing?1:lock;
+        guidance[axis]+=compensation[axis]*(rescuing?1:(1-disruption)*lock);
+      }
     }
-    for (const axis of AXES) acceleration[axis] += guidance[axis];
+    for(const axis of AXES)acceleration[axis]+=guidance[axis];
 
     const avoidance = {x:0,y:0,z:0};
     for (const body of asteroids) {
@@ -104,7 +106,7 @@ export class OrbitalGravity {
     return acceleration;
   }
 
-  advance(dt, nominal, asteroids, instability, orbitRadius = null, orbit = null, route = null) {
+  advance(dt, nominal, asteroids, instability, orbitRadius = null, orbit = null, route = null, navigation = null) {
     if (dt <= 0) return this.offset;
     if (!this.position) {
       const angle = -OMEGA*dt;
@@ -124,13 +126,13 @@ export class OrbitalGravity {
     };
     for(let step=0;step<steps;step++) {
       const start=atTime(step*h-dt);
-      const a=this.acceleration(this.position,this.velocity,start.target,start.sources,instability,orbitRadius,orbit);
+      const a=this.acceleration(this.position,this.velocity,start.target,start.sources,instability,orbitRadius,orbit,navigation);
       for(const axis of AXES) {
         this.velocity[axis]+=a[axis]*h/2;
         this.position[axis]+=this.velocity[axis]*h;
       }
       const end=atTime((step+1)*h-dt);
-      const b=this.acceleration(this.position,this.velocity,end.target,end.sources,instability,orbitRadius,orbit);
+      const b=this.acceleration(this.position,this.velocity,end.target,end.sources,instability,orbitRadius,orbit,navigation);
       for(const axis of AXES) this.velocity[axis]+=b[axis]*h/2;
     }
     for(const axis of AXES) this.offset[axis]=this.position[axis]-nominal[axis];
