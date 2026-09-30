@@ -37,10 +37,8 @@ controls.enablePan = false;
 controls.minDistance = 12;
 controls.maxDistance = 250;
 controls.autoRotate = false;
-const orbitPosition = new THREE.Vector3(17, 13, 28);
-const lookTarget = new THREE.Vector3(-1, 0, 0);
-camera.position.copy(orbitPosition);
-controls.target.copy(lookTarget);
+const defaultCameraOffset = new THREE.Vector3(18, 13, 28);
+camera.position.copy(defaultCameraOffset);
 // A single key light and restrained ambient fill preserve crisp cel-shading bands.
 scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 const key = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -146,16 +144,15 @@ function animate(){
  }
  prediction.follow(ship.position,journey.distance,state.elapsed);
  backdrop.advance(journeyStep*2.8);
+ // Translate the camera with the ship, preserving the user's orbit and zoom.
+ // Target the ship every frame, including beam transfers and asteroid capture.
+ const cameraShift=ship.position.clone().sub(controls.target);
+ camera.position.add(cameraShift);
+ controls.target.copy(ship.position);
  if(cameraTransition){
-  camera.position.lerp(orbitPosition,1-Math.exp(-dt*4));
-  controls.target.lerp(lookTarget,1-Math.exp(-dt*4));
-  if(camera.position.distanceTo(orbitPosition)<.06)cameraTransition=false;
- } else {
-  // Preserve the user's orbit/zoom while smoothly following an escaping ship.
-  const escapeBlend=THREE.MathUtils.clamp((ship.position.length()-8)/12,0,1);
-  const target=lookTarget.clone().addScaledVector(ship.position,escapeBlend);
-  const shift=target.sub(controls.target).multiplyScalar(1-Math.exp(-dt*2));
-  controls.target.add(shift);camera.position.add(shift);
+  const resetPosition=ship.position.clone().add(defaultCameraOffset);
+  camera.position.lerp(resetPosition,1-Math.exp(-dt*4));
+  if(camera.position.distanceTo(resetPosition)<.06)cameraTransition=false;
  }
  controls.update();
  renderer.render(scene, camera);

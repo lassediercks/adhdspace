@@ -42,7 +42,7 @@ Or run `just dev`. Vite prints the selected port and automatically tries the nex
 - Pause/resume with the play button or Space.
 - Adjust the orbit radius with the slider. Flight speed is fixed at 1.5×.
 - A randomized field of 20 asteroids are always present and pass at a constant speed, ranging from small nearby fragments to large, distant boulders, with occasional natural beam intersections. New spawns independently vary their spacing, lateral positions, sizes, jagged silhouettes, muted stone tones, and tumble rates. Each page load gets a fresh seed; reset replays that field. Distant rocks and a deep starfield remain visible out to thousands of scene units. Instability controls only their gravitational pull: 0% means no attraction; higher settings increase the pull. Collision avoidance remains active at every setting.
-- The camera defaults to Orbit; drag and zoom freely. It smoothly follows the ship if it leaves the beam.
+- The camera stays centered on the ship throughout orbiting, beam transfers, and asteroid capture. Drag and zoom freely; following preserves your viewing angle and distance. Reset restores the default view around the ship.
 - At 100% instability, gravity can overpower the ship’s limited guidance thrust and capture it around an asteroid. Forward travel then eases to a halt; local orbital motion and the recorded trail continue. Lower instability below 35% or reset to continue the journey.
 - Toggle the flight trail, or press R to reset the flight settings.
 - Reduced-motion preferences start the flight paused.
