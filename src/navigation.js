@@ -3,6 +3,7 @@ import { gravitationalAcceleration, bodyClearance } from './orbital-gravity.js';
 import { derailmentRisk } from './flight-controls.js';
 
 export const RESCUE_FUEL=8;
+export const RESCUE_COOLDOWN=30;
 export const fuelBurnRate=radius=>.02+.38*(1-Math.max(0,Math.min(1,radius/7)))**2;
 
 // Seeded accumulated encounter risk is frame-rate independent and forecastable.
@@ -11,7 +12,7 @@ export class Navigation {
   constructor(seed=31) { this.seed=seed>>>0;this.reset(); }
   reset() {
     this.mode='tracking';this.lock=1;this.hazard=0;this.immunity=0;
-    this.fuel=100;this.refueling=false;this.stationId=null;
+    this.exposure=1;this.fuel=100;this.cooldown=0;this.refueling=false;this.stationId=null;
     let value=(this.seed^0x9e3779b9)>>>0;
     value=Math.imul(value^(value>>>16),0x21f0aaad);
     value=Math.imul(value^(value>>>15),0x735a2d97);value^=value>>>15;
@@ -19,11 +20,12 @@ export class Navigation {
   }
   restore(snapshot) { if(snapshot)Object.assign(this,snapshot); }
   rescue() {
-    if(this.mode!=='derailed'||this.fuel<RESCUE_FUEL)return false;
-    this.fuel-=RESCUE_FUEL;this.mode='rescuing';this.stationId=null;this.refueling=false;this.hazard=0;return true;
+    if(this.mode!=='derailed'||this.fuel<RESCUE_FUEL||this.cooldown>0)return false;
+    this.fuel-=RESCUE_FUEL;this.cooldown=RESCUE_COOLDOWN;this.mode='rescuing';this.stationId=null;this.refueling=false;this.hazard=0;return true;
   }
-  advance(dt,position,velocity,bodies,instability,radius) {
+  advance(dt,position,velocity,bodies,instability,radius,realSeconds=dt) {
     if(dt<=0)return;
+    this.cooldown=Math.max(0,this.cooldown-realSeconds);
     this.fuel=Math.max(0,this.fuel-dt*fuelBurnRate(radius));
     if(this.fuel===0&&this.mode==='tracking')this.mode='derailed';
     this.refueling=false;
@@ -44,7 +46,7 @@ export class Navigation {
     if(this.mode==='tracking'&&this.immunity===0) {
       const g=gravitationalAcceleration(position,bodies,instability);
       const pressure=Math.hypot(g.x,g.y,g.z);
-      this.hazard+=dt*.35*derailmentRisk(instability,radius)*pressure/(pressure+3);
+      this.hazard+=dt*.35*derailmentRisk(instability,radius)*this.exposure*pressure/(pressure+3);
       if(this.hazard>=this.threshold)this.mode='derailed';
     }
     if(this.mode==='rescuing'&&Math.hypot(position.x,position.y,position.z)<.6&&Math.hypot(velocity.x,velocity.y,velocity.z)<.8) {

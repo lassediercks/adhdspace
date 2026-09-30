@@ -1,3 +1,4 @@
+import { BeamNetwork, networkFlightRoute } from './beam-network.js';
 import { scheduledBeamCount } from './beam-schedule.js';
 import { Navigation } from './navigation.js';
 import { smoothControl } from './flight-controls.js';
@@ -20,6 +21,8 @@ export function predictPath(snapshot, horizon=(snapshot.targetDual ? 30 : FORECA
   const journey=new Journey();
   const navigation=snapshot.navigation?new Navigation(snapshot.navigation.seed):null;
   navigation?.restore(snapshot.navigation);
+  const network=snapshot.network?new BeamNetwork(snapshot.network.seed):null;
+  if(network)network.restore(snapshot.network);
   const weather=snapshot.weather?new SpaceWeather():null;
   weather?.restore(snapshot.weather);
   journey.rate=snapshot.journey.rate;
@@ -33,17 +36,21 @@ export function predictPath(snapshot, horizon=(snapshot.targetDual ? 30 : FORECA
   for(let i=1;i<=steps;i++) {
     phase+=FORECAST_STEP*.45;
     if(flightSeconds!==undefined)flightSeconds+=FORECAST_STEP/snapshot.speed;
-    const targetDual=flightSeconds===undefined?(snapshot.targetDual??0):scheduledBeamCount(flightSeconds)-1;
+    network?.advance(flightSeconds??0,journey.distance,FORECAST_STEP/snapshot.speed);
+    const targetDual=network?network.beams.length-1:flightSeconds===undefined?(snapshot.targetDual??0):scheduledBeamCount(flightSeconds)-1;
     dual=damp(dual,targetDual,2,FORECAST_STEP);
     radius=smoothControl(radius,snapshot.targetRadius,FORECAST_STEP/snapshot.speed);
     instability=weather?weather.advance(FORECAST_STEP/snapshot.speed):smoothControl(instability,snapshot.targetInstability,FORECAST_STEP/snapshot.speed);
-    navigation?.advance(FORECAST_STEP,physics.position,physics.velocity,bodies,instability,radius);
+    if(navigation&&network)navigation.exposure=network.exposure(journey.distance);
+    navigation?.advance(FORECAST_STEP,physics.position,physics.velocity,bodies,instability,radius,FORECAST_STEP/snapshot.speed);
     const previousRate=journey.rate;
     const travel=journey.advance(FORECAST_STEP,physics.position,physics.velocity,bodies,instability,radius,navigation);
     physics.velocity.x+=8*(previousRate-journey.rate);
     bodies=bodies.map(body=>advanceFlyby(body,travel,physics.position,journey.rate));
     const body=journey.orbit&&bodies.find(body=>body.id===journey.orbit.id);
-    physics.advance(FORECAST_STEP,flightRoute(phase,radius,dual),bodies,instability,radius,body?{body,normal:journey.orbit.normal}:null,{phase,radius,dual},navigation);
+    const route={phase,radius,dual,network,distance:journey.distance,forwardSpeed:journey.rate*2.8};
+    const target=network?networkFlightRoute(phase,radius,dual,network,journey.distance,route.forwardSpeed):flightRoute(phase,radius,dual);
+    physics.advance(FORECAST_STEP,target,bodies,instability,radius,body?{body,normal:journey.orbit.normal}:null,route,navigation);
     if(i%2===0)points.push(physics.position.x+journey.distance-snapshot.journey.distance,physics.position.y,physics.position.z);
   }
   return new Float32Array(points);

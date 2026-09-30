@@ -2,10 +2,13 @@ import * as THREE from 'three';
 
 // Query the actual transformed rock silhouettes, not their physics spheres.
 // Rays across the beam's width also account for grazing contact with its rim.
-export function blockedBeamIntervals(meshes, beamRadius = .14, center = {y:0,z:0}) {
+export function blockedBeamIntervals(meshes, beamRadius = .14, center = {y:0,z:0}, direction = {x:1,y:0,z:0}) {
   const forward = new THREE.Raycaster();
   const backward = new THREE.Raycaster();
-  const positiveX = new THREE.Vector3(1,0,0), negativeX = new THREE.Vector3(-1,0,0);
+  const origin=new THREE.Vector3(center.x??0,center.y,center.z);
+  const axis=new THREE.Vector3(direction.x,direction.y,direction.z).normalize();
+  const reverse=axis.clone().negate();
+  const rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1,0,0),axis);
   const sphere = new THREE.Sphere();
   const offsets = [[0,0]];
   for(let i=0;i<12;i++) offsets.push([Math.cos(i*Math.PI/6)*beamRadius,Math.sin(i*Math.PI/6)*beamRadius]);
@@ -14,15 +17,17 @@ export function blockedBeamIntervals(meshes, beamRadius = .14, center = {y:0,z:0
     mesh.updateWorldMatrix(true,false);
     if(!mesh.geometry.boundingSphere)mesh.geometry.computeBoundingSphere();
     sphere.copy(mesh.geometry.boundingSphere).applyMatrix4(mesh.matrixWorld);
-    if(Math.hypot(sphere.center.y-center.y,sphere.center.z-center.z)>sphere.radius+beamRadius)continue;
+    const relative=sphere.center.clone().sub(origin),along=relative.dot(axis);
+    if(relative.clone().addScaledVector(axis,-along).length()>sphere.radius+beamRadius)continue;
     let entry=Infinity,exit=-Infinity;
     for(const [y,z] of offsets) {
-      forward.set(new THREE.Vector3(sphere.center.x-sphere.radius-1,y+center.y,z+center.z),positiveX);
-      backward.set(new THREE.Vector3(sphere.center.x+sphere.radius+1,y+center.y,z+center.z),negativeX);
+      const offset=new THREE.Vector3(0,y,z).applyQuaternion(rotation).add(origin);
+      forward.set(offset.clone().addScaledVector(axis,along-sphere.radius-1),axis);
+      backward.set(offset.clone().addScaledVector(axis,along+sphere.radius+1),reverse);
       // Opposite rays find both ends with either front- or back-facing materials.
       for(const hit of [...forward.intersectObject(mesh,false),...backward.intersectObject(mesh,false)]) {
-        entry=Math.min(entry,hit.point.x);
-        exit=Math.max(exit,hit.point.x);
+        entry=Math.min(entry,hit.point.clone().sub(origin).dot(axis));
+        exit=Math.max(exit,hit.point.clone().sub(origin).dot(axis));
       }
     }
     if(Number.isFinite(entry)&&Number.isFinite(exit))intervals.push([entry,exit]);
@@ -49,23 +54,27 @@ export class OccludedBeam {
     geometry.rotateZ(Math.PI/2);
     this.core=new THREE.InstancedMesh(geometry,new THREE.MeshBasicMaterial({color:0xafffe4}),capacity);
     this.rim=new THREE.InstancedMesh(geometry,new THREE.MeshBasicMaterial({color:0x41bdac,transparent:true,opacity:.18,depthWrite:false}),capacity);
-    this.core.frustumCulled=this.rim.frustumCulled=false;
+    this.pick=new THREE.InstancedMesh(geometry,new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false,depthTest:false}),capacity);
+    this.core.frustumCulled=this.rim.frustumCulled=this.pick.frustumCulled=false;
     this.core.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.rim.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.matrix=new THREE.Matrix4();
-    scene.add(this.core,this.rim);
+    scene.add(this.core,this.rim,this.pick);
   }
 
-  update(meshes, center = {y:0,z:0}) {
-    const intervals=visibleBeamIntervals(blockedBeamIntervals(meshes,.14,center));
-    this.core.count=this.rim.count=intervals.length;
+  update(meshes, center = {y:0,z:0}, direction = {x:1,y:0,z:0}) {
+    const intervals=visibleBeamIntervals(blockedBeamIntervals(meshes,.14,center,direction));
+    this.core.count=this.rim.count=this.pick.count=intervals.length;
+    const axis=new THREE.Vector3(direction.x,direction.y,direction.z).normalize();
+    const rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1,0,0),axis);
+    const origin=new THREE.Vector3(center.x??0,center.y,center.z);
     intervals.forEach(([start,end],i)=>{
-      for(const [mesh,radius] of [[this.core,.055],[this.rim,.14]]) {
-        this.matrix.makeScale(end-start,radius,radius);
-        this.matrix.setPosition((start+end)/2,center.y,center.z);
+      for(const [mesh,radius] of [[this.core,.055],[this.rim,.14],[this.pick,.45]]) {
+        this.matrix.compose(origin.clone().addScaledVector(axis,(start+end)/2),rotation,new THREE.Vector3(end-start,radius,radius));
         mesh.setMatrixAt(i,this.matrix);
       }
     });
-    this.core.instanceMatrix.needsUpdate=this.rim.instanceMatrix.needsUpdate=true;
+    this.core.instanceMatrix.needsUpdate=this.rim.instanceMatrix.needsUpdate=this.pick.instanceMatrix.needsUpdate=true;
+    this.pick.boundingSphere=null;
   }
 }

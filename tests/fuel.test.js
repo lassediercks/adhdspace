@@ -59,3 +59,14 @@ test('a station captures, retains, and refuels the ship until rescue releases it
  for(let i=0;i<2400&&nav.mode==='rescuing';i++)advance();
  assert.equal(nav.mode,'tracking');assert.equal(journey.orbit,null);
 });
+
+test('rescue boost cannot be reused during its 30-second real-time cooldown',()=>{
+ const nav=new Navigation();nav.mode='derailed';assert.ok(nav.rescue());
+ assert.equal(nav.cooldown,30);
+ nav.mode='derailed';const fuel=nav.fuel;
+ assert.equal(nav.rescue(),false);assert.equal(nav.fuel,fuel);
+ nav.advance(44.85,{x:0,y:100,z:0},origin,[],0,7,29.9);
+ assert.ok(nav.cooldown>0&&nav.cooldown<.11);assert.equal(nav.rescue(),false);
+ nav.advance(.3,{x:0,y:100,z:0},origin,[],0,7,.2);
+ assert.equal(nav.cooldown,0);assert.ok(nav.rescue());assert.equal(nav.cooldown,30);
+});

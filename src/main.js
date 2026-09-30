@@ -1,9 +1,9 @@
-import { scheduledBeamCount } from './beam-schedule.js';
+import { BeamNetwork, networkFlightRoute } from './beam-network.js';
 import { Navigation, RESCUE_FUEL, fuelBurnRate } from './navigation.js';
 import { smoothControl } from './flight-controls.js';
 import { SpaceWeather } from './space-weather.js';
 import { SpaceBackdrop } from './space-backdrop.js';
-import { flightRoute, beamCenter, MAX_BEAMS } from './flight-route.js';
+import { flightRoute, MAX_BEAMS } from './flight-route.js';
 import './style.css';
 import { RecordedTrail } from './recorded-trail.js';
 import { FlightTrail } from './flight-trail.js';
@@ -88,6 +88,8 @@ const beamObstacles = asteroids.asteroids.map(body=>body.outline);
 const gravity = new OrbitalGravity();
 const journey = new Journey();
 const navigation = new Navigation(asteroids.seed);
+const network = new BeamNetwork(asteroids.seed);
+beams.forEach((beam,index)=>{beam.pick.userData.beamIndex=index;});
 const weather = new SpaceWeather(asteroids.seed^0x5f3759df);
 const nominalPosition = new THREE.Vector3();
 const previousPosition = new THREE.Vector3();
@@ -105,28 +107,36 @@ function animate(){
  const dt=Math.min(clock.getDelta(),.05);
  const step=state.playing?dt*state.speed:0;
  state.elapsed+=step;state.phase+=step*.45;
- const beamCount=scheduledBeamCount(state.elapsed/state.speed);
+ network.advance(state.elapsed/state.speed,journey.distance,dt);
+ const beamCount=network.beams.length;
  if(beamCount!==state.beamCount){state.beamCount=beamCount;predictionDirty=true;}
  if(state.playing)currentRadius=smoothControl(currentRadius,state.radius,dt);
  currentDual=THREE.MathUtils.damp(currentDual,state.beamCount-1,2,step);
  const r=currentRadius, a=state.phase;
  previousPosition.copy(ship.position);
  if(step>0)currentInstability=weather.advance(dt);
- navigation.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius);
+ navigation.exposure=network.exposure(journey.distance);
+ navigation.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius,dt);
  updateRescueControl();updateWeatherIndicator();updateFuelIndicator();
  const previousRate=journey.rate;
  const journeyStep=journey.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius,navigation);
  // Moving into/out of the local body frame preserves relative velocity.
  gravity.velocity.x+=8*(previousRate-journey.rate);
  const sources = asteroids.update(journeyStep, ship.position, journey.rate, step);
+ const centers=network.centers(journey.distance);
  beams.forEach((beam,index)=>{
-  beam.core.visible=beam.rim.visible=index<state.beamCount;
-  if(index<state.beamCount)beam.update(beamObstacles,beamCenter(index,state.beamCount));
+  beam.core.visible=beam.rim.visible=beam.pick.visible=index<state.beamCount;
+  if(index<state.beamCount){
+   beam.update(beamObstacles,centers[index],network.direction(index));
+   beam.core.material.color.setHex(network.selected===null||network.selected===index?0xafffe4:0x688e82);
+  }
  });
+ $('beam-choice').hidden=!network.choiceNeeded&&network.selected===null;
+ $('beam-choice').textContent=network.choiceNeeded?'Beams diverging · click a beam to follow':`Following beam ${(network.selected??0)+1}`;
  const orbitPlanet=journey.orbit&&sources.find(p=>p.id===journey.orbit.id);
  const orbit=orbitPlanet?{body:orbitPlanet,normal:journey.orbit.normal}:null;
- const route={phase:a,radius:r,dual:currentDual};
- const target=flightRoute(a,r,currentDual);
+ const route={phase:a,radius:r,dual:currentDual,network,distance:journey.distance,forwardSpeed:journey.rate*2.8};
+ const target=networkFlightRoute(a,r,currentDual,network,journey.distance,journey.rate*2.8);
  nominalPosition.copy(target);
  const offset = gravity.advance(step, target, sources, currentInstability, currentRadius, orbit, route, navigation);
  ship.position.set(nominalPosition.x + offset.x, nominalPosition.y + offset.y, nominalPosition.z + offset.z);
@@ -150,7 +160,7 @@ function animate(){
  if(predictionDirty||bodySignature!==predictionBodies||(step>0&&predictionCooldown>=.2)) {
   if(predictionDirty||bodySignature!==predictionBodies)prediction.invalidate();
   prediction.refresh({
-    position:gravity.position,velocity:gravity.velocity,journey,navigation,weather,bodies:sources,
+    position:gravity.position,velocity:gravity.velocity,journey,navigation,weather,network,bodies:sources,
     flightSeconds:state.elapsed/state.speed,
     dual:currentDual,targetDual:state.beamCount-1,
     phase:state.phase,radius:currentRadius,targetRadius:state.radius,
@@ -200,14 +210,33 @@ function updateFuelIndicator(){
  $('fuel-rate').textContent=`${rate>0?'+':'−'}${Math.abs(rate).toFixed(2)}% / s`;
 }
 function updateRescueControl(){
- const button=$('rescue');button.disabled=navigation.mode!=='derailed'||navigation.fuel<RESCUE_FUEL;
- button.textContent=navigation.mode==='rescuing'?'Boosting…':'Rescue boost';
- button.title=navigation.fuel<RESCUE_FUEL?'Refuel at a station — rescue needs 8% fuel':navigation.mode==='derailed'?'Boost back to the primary beam (8% fuel)':'Available when beam lock is lost';
+ const button=$('rescue');button.disabled=navigation.mode!=='derailed'||navigation.fuel<RESCUE_FUEL||navigation.cooldown>0;
+ const remaining=Math.ceil(navigation.cooldown);
+ const label=navigation.mode==='rescuing'?'Boosting':'Rescue boost';
+ button.textContent=remaining>0?`${label} · ${remaining}s`:label;
+ button.title=navigation.cooldown>0?`Rescue recharging — ${remaining}s remaining`:navigation.fuel<RESCUE_FUEL?'Refuel at a station — rescue needs 8% fuel':navigation.mode==='derailed'?'Boost back to the primary beam (8% fuel)':'Available when beam lock is lost';
 }
 $('rescue').addEventListener('click',()=>{
- if(navigation.rescue()){predictionDirty=true;updateRescueControl();}
+ if(navigation.rescue()){network.choose(0);predictionDirty=true;updateRescueControl();}
 });
 updateRescueControl();updateWeatherIndicator();updateFuelIndicator();
+const beamRaycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+let pointerStart=null;
+function beamAtPointer(event){
+ const rect=renderer.domElement.getBoundingClientRect();
+ pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);
+ beamRaycaster.setFromCamera(pointer,camera);
+ return beamRaycaster.intersectObjects(beams.slice(0,state.beamCount).map(beam=>beam.pick),false)[0]?.object.userData.beamIndex;
+}
+renderer.domElement.addEventListener('pointerdown',event=>{pointerStart={x:event.clientX,y:event.clientY};});
+renderer.domElement.addEventListener('pointerup',event=>{
+ if(pointerStart&&Math.hypot(event.clientX-pointerStart.x,event.clientY-pointerStart.y)<6){
+  const index=beamAtPointer(event);
+  if(index!==undefined&&network.choose(index))predictionDirty=true;
+ }
+ pointerStart=null;
+});
+renderer.domElement.addEventListener('pointermove',event=>{renderer.domElement.style.cursor=beamAtPointer(event)===undefined?'grab':'pointer';});
 $('info-button').addEventListener('click',()=>$('info-dialog').showModal());
 $('close-info').addEventListener('click',()=>$('info-dialog').close());
 $('resume-exploring').addEventListener('click',()=>$('info-dialog').close());

@@ -1,3 +1,4 @@
+import { networkFlightRoute } from './beam-network.js';
 import { derailmentRisk } from './flight-controls.js';
 import { flightRoute } from './flight-route.js';
 // Newtonian test-particle dynamics in a frame translating at constant velocity.
@@ -74,7 +75,7 @@ export class OrbitalGravity {
         guidance[axis]=.8*(surfacePoint[axis]-position[axis])+1.5*(targetVelocity-velocity[axis]);
       }
     }
-    const disruption=derailmentRisk(strength,radius);
+    const disruption=Math.min(1,derailmentRisk(strength,radius)*(navigation?.exposure??1));
     const lock=navigation?.lock??1;
     limit(guidance,rescuing?24:MAX_GUIDANCE_ACCELERATION*(orbit?1:1-.9*disruption));
     if(!orbit||rescuing) {
@@ -120,7 +121,7 @@ export class OrbitalGravity {
     const atTime = offset => {
       const angle = OMEGA*offset;
       return {
-        target:route ? flightRoute(route.phase+OMEGA*offset,route.radius,route.dual) : {x:nominal.x,y:nominal.y*Math.cos(angle)-nominal.z*Math.sin(angle),z:nominal.y*Math.sin(angle)+nominal.z*Math.cos(angle)},
+        target:route?.network ? networkFlightRoute(route.phase+OMEGA*offset,route.radius,route.dual,route.network,route.distance+route.forwardSpeed*offset,route.forwardSpeed) : route ? flightRoute(route.phase+OMEGA*offset,route.radius,route.dual) : {x:nominal.x,y:nominal.y*Math.cos(angle)-nominal.z*Math.sin(angle),z:nominal.y*Math.sin(angle)+nominal.z*Math.cos(angle)},
         sources:asteroids.map(p=>({...p,x:p.x+(p.vx??0)*offset})),
       };
     };

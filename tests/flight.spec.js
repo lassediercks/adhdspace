@@ -58,7 +58,23 @@ test('a real seeded lock loss enables rescue and the burn recovers control',asyn
  await page.getByRole('slider',{name:'Stabilizer engines',exact:true}).fill('100');
  await page.waitForTimeout(1000);await expect(rescue).toBeEnabled();
  await rescue.click();await expect(rescue).toBeDisabled();
- await expect(rescue).toHaveText('Boosting…');
- await expect(rescue).toHaveText('Rescue boost',{timeout:30000});
+ await expect(rescue).toHaveText(/Boosting · [0-9]+s/);
+ await expect(rescue).toHaveText(/Rescue boost · [0-9]+s/,{timeout:30000});
  await expect(rescue).toBeDisabled();expect(errors).toEqual([]);
+});
+
+
+test('stabilizer lever moves vertically with pointer and keyboard input',async({page})=>{
+ await seedField(page);await page.goto('http://127.0.0.1:5173');
+ const lever=page.getByRole('slider',{name:'Stabilizer engines',exact:true});
+ await expect(lever).toHaveAttribute('aria-orientation','vertical');
+ const box=await lever.boundingBox();expect(box.height).toBeGreaterThan(box.width*2);
+ await page.mouse.move(box.x+box.width/2,box.y+box.height*.9);await page.mouse.down();
+ await page.mouse.move(box.x+box.width/2,box.y+box.height*.1,{steps:10});await page.mouse.up();
+ expect(Number(await lever.inputValue())).toBeGreaterThan(80);
+ await page.mouse.move(box.x+box.width/2,box.y+box.height*.1);await page.mouse.down();
+ await page.mouse.move(box.x+box.width/2,box.y+box.height*.9,{steps:10});await page.mouse.up();
+ expect(Number(await lever.inputValue())).toBeLessThan(20);
+ await lever.focus();await page.keyboard.press('Home');await expect(lever).toHaveValue('0');
+ await page.keyboard.press('ArrowUp');await expect(lever).toHaveValue('1');
 });
