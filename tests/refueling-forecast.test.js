@@ -5,11 +5,11 @@ import { Navigation } from '../src/navigation.js';
 import { Journey } from '../src/journey.js';
 import { flightRoute } from '../src/flight-route.js';
 
-function snapshot(radius=5.6,instability=0){
+function snapshot(radius=7,instability=0){
  const route=flightRoute(1.05,radius),navigation=new Navigation();
  navigation.fuel=50;navigation.threshold=100;
  return {position:route,velocity:route.velocity,navigation,journey:new Journey(),
-  bodies:[{id:7,kind:'station',x:30,y:15,z:0,radius:3,mass:3,vx:-8}],
+  bodies:[{id:7,kind:'station',x:20,y:0,z:0,radius:3,mass:3,vx:-8}],
   phase:1.05,radius,targetRadius:radius,instability,speed:1.5};
 }
 test('forecast identifies actual refueling opportunities without mutating live fuel or station state',()=>{
@@ -24,7 +24,7 @@ test('forecast identifies actual refueling opportunities without mutating live f
 test('blue requires docking eligibility, not merely intersecting a station on a fully stabilized route',()=>{
  const stable=snapshot(0);stable.bodies[0].x=10;stable.bodies[0].y=0;
  assert.equal(forecastFlight(stable,1).willRefuel,false);
- stable.navigation.mode='derailed';stable.instability=.95;
+ stable.navigation.mode='derailed';stable.instability=.95;stable.radius=stable.targetRadius=7;
  assert.equal(forecastFlight(stable,1).willRefuel,true);
 });
 

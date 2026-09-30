@@ -3,6 +3,8 @@ import { gravitationalAcceleration, bodyClearance } from './orbital-gravity.js';
 import { derailmentRisk } from './flight-controls.js';
 
 export const REFUEL_SECONDS=10;
+export const REFUEL_MIN_RADIUS=7*.95;
+export const STATION_DOCKING_MARGIN=22;
 export const stationKey=body=>`${body.id}:${body.generation??0}`;
 export const activeBodies=(bodies,navigation)=>bodies.filter(body=>!navigation?.consumedStations?.includes(stationKey(body)));
 export const RESCUE_FUEL=8;
@@ -32,23 +34,28 @@ export class Navigation {
   advance(dt,position,velocity,bodies,instability,radius,realSeconds=dt) {
     if(dt<=0)return;
     const arrivedFull=this.fuel>=99.5&&!this.refueling;
+    const enginesOff=radius>=REFUEL_MIN_RADIUS;
+    if(!enginesOff&&this.stationId!==null){
+      this.stationId=null;this.refuelKey=null;this.refuelElapsed=0;this.refueling=false;
+      this.mode='tracking';this.hazard=0;this.immunity=12;
+    }
     this.cooldown=Math.max(0,this.cooldown-realSeconds);
     this.fuel=Math.max(0,this.fuel-dt*fuelBurnRate(radius));
     if(this.fuel===0&&this.mode==='tracking')this.mode='derailed';
     this.refueling=false;
     const stations=bodies.filter(body=>body.kind==='station'&&!this.consumedStations.includes(stationKey(body)))
       .map(body=>({body,distance:Math.hypot(position.x-body.x,position.y-body.y,position.z-body.z)}))
-      .filter(({body,distance})=>distance<bodyClearance(body,radius)+10+(stationKey(body)===this.refuelKey?5:0))
+      .filter(({body,distance})=>distance<bodyClearance(body,radius)+STATION_DOCKING_MARGIN+(stationKey(body)===this.refuelKey?5:0))
       .sort((a,b)=>Number(stationKey(b.body)===this.refuelKey)-Number(stationKey(a.body)===this.refuelKey)||a.distance-b.distance);
     if(arrivedFull){
       for(const {body} of stations)this.consumedStations.push(stationKey(body));
       this.stationId=null;this.refuelKey=null;this.refuelElapsed=0;
     }
     for(const {body,distance} of stations) {
-      if(body.kind!=='station'||this.consumedStations.includes(stationKey(body)))continue;
-      const reach=bodyClearance(body,radius)+10+(stationKey(body)===this.refuelKey?5:0);
+      if(!enginesOff||body.kind!=='station'||this.consumedStations.includes(stationKey(body)))continue;
+      const reach=bodyClearance(body,radius)+STATION_DOCKING_MARGIN+(stationKey(body)===this.refuelKey?5:0);
       // Low coherence is the pilot's deliberate opt-in to leave a beam here.
-      if(this.mode==='tracking'&&this.immunity===0&&radius>=4.2&&distance<reach) {
+      if(this.mode==='tracking'&&this.immunity===0&&enginesOff&&distance<reach) {
         this.mode='derailed';this.stationId=body.id;
       }
       if(this.mode==='derailed'&&distance<reach) {

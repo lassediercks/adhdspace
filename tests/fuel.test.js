@@ -38,7 +38,7 @@ test('unlocked fields have a nearby station with randomized placement and correc
 });
 
 test('a station refuels in ten seconds, disappears, and releases forward progress',()=>{
- const nav=new Navigation(),physics=new OrbitalGravity(),journey=new Journey(),radius=5.6;
+ const nav=new Navigation(),physics=new OrbitalGravity(),journey=new Journey(),radius=7;
  nav.fuel=20;nav.threshold=100;
  let body={id:7,kind:'station',x:30,y:15,z:0,radius:4,mass:7.68,avoidanceRadius:4.1,vx:-8},phase=0;
  const initial=flightRoute(phase,radius);physics.reset(initial,initial.velocity);
@@ -203,7 +203,7 @@ test('an economical opening flight can reach and finish refueling before its tan
   let completedAt=null,minimumFuel=100;
   for(let frame=1;frame<=70*60;frame++){
    const dt=1/60,step=dt*1.5,time=frame*dt;
-   if(time>=10)radius=5.6+(radius-5.6)*Math.exp(-.3*dt);
+   if(time>=10){const target=time<37?5.6:7;radius=target+(radius-target)*Math.exp(-.3*dt);}
    phase+=step*.45;
    // Isolate the opening station from unrelated asteroid derailments.
    let sources=body.kind==='station'?activeBodies([body],nav):[];
@@ -250,8 +250,8 @@ test('three consecutive refuels remain reachable after returning to full engine 
   for(let frame=1;frame<=240*60&&nav.consumedStations.length<3;frame++){
    const dt=1/60,step=dt*1.5,time=frame*dt;
    const stationActive=body.kind==='station'&&activeBodies([body],nav).length>0;
-   const conserving=nav.consumedStations.length===0?time>=10:stationActive&&body.x-physics.position.x<120;
-   const target=conserving?5.6:0;radius=target+(radius-target)*Math.exp(-.3*dt);
+   const conserving=nav.consumedStations.length===0?time>=10:stationActive&&body.x-physics.position.x<170;
+   const target=conserving?(body.x-physics.position.x<100?7:5.6):0;radius=target+(radius-target)*Math.exp(-.3*dt);
    phase+=step*.45;
    let sources=stationActive?[body]:[];
    nav.advance(step,physics.position,physics.velocity,sources,0,radius,dt);
@@ -286,4 +286,21 @@ test('an already derailed full ship skips an unnecessary station without silentl
  nav.advance(1/60,origin,origin,[station],0,7);
  assert.equal(nav.mode,'derailed');assert.equal(nav.refueling,false);
  assert.equal(activeBodies([station],nav).length,0);
+});
+
+test('refueling requires engines at five percent or less and powering up releases the station',()=>{
+ const station={id:7,kind:'station',x:15,y:0,z:0,radius:3,mass:3,vx:0};
+ const powered=new Navigation();powered.fuel=50;powered.mode='derailed';
+ powered.advance(1,origin,origin,[station],0,6.3);
+ assert.equal(powered.refueling,false);assert.ok(powered.fuel<50);
+ const nav=new Navigation(),journey=new Journey();nav.fuel=50;
+ nav.advance(1,origin,origin,[station],0,7);
+ assert.equal(nav.refueling,true);journey.advance(1,origin,origin,[station],0,7,nav);
+ assert.equal(journey.orbit.id,7);
+ const fuel=nav.fuel;
+ nav.advance(.1,origin,origin,[station],0,6.5);
+ journey.advance(.1,origin,origin,[station],0,6.5,nav);
+ assert.equal(nav.refueling,false);assert.equal(nav.stationId,null);assert.equal(nav.mode,'tracking');
+ assert.equal(journey.orbit,null);assert.ok(journey.rate>0);
+ assert.ok(nav.fuel<fuel);assert.equal(nav.consumedStations.length,0);
 });

@@ -41,21 +41,21 @@ test('docking stays on one station through competing nearby stations and finishe
  const nav=new Navigation(),journey=new Journey();nav.fuel=20;
  const a={id:7,generation:0,kind:'station',x:15,y:0,z:0,radius:3,mass:3,vx:0};
  const b={id:6,generation:0,kind:'station',x:16,y:0,z:0,radius:3,mass:3,vx:0};
- nav.advance(.1,origin,origin,[a,b],0,5.6,.1);
+ nav.advance(.1,origin,origin,[a,b],0,7,.1);
  assert.equal(nav.stationId,7);
  journey.orbit={id:6,normal:{x:0,y:0,z:1}};
- journey.advance(.1,origin,origin,[a,b],0,5.6,nav);
+ journey.advance(.1,origin,origin,[a,b],0,7,nav);
  assert.equal(journey.orbit.id,7,'orbital capture must use the station actually refueling');
  b.x=14;
  for(let i=0;i<98;i++){
-  nav.advance(.1,origin,origin,[b,a],0,5.6,.1);
+  nav.advance(.1,origin,origin,[b,a],0,7,.1);
   assert.equal(nav.stationId,7);assert.equal(nav.refuelKey,'7:0');
  }
- nav.advance(.1,origin,origin,[b,a],0,5.6,.1);
+ nav.advance(.1,origin,origin,[b,a],0,7,.1);
  assert.equal(nav.fuel,100);assert.deepEqual(nav.consumedStations,['7:0','6:0']);
  assert.equal(nav.mode,'tracking');assert.equal(nav.refueling,false);
- const travel=journey.advance(.1,origin,origin,[b,a],0,5.6,nav);
+ const travel=journey.advance(.1,origin,origin,[b,a],0,7,nav);
  assert.equal(journey.orbit,null);assert.ok(travel>0);
- nav.advance(.1,origin,origin,[b,a],0,5.6,.1);
+ nav.advance(.1,origin,origin,[b,a],0,7,.1);
  assert.equal(nav.refueling,false,'departure immunity prevents immediate capture by the neighbor');
 });

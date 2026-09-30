@@ -138,7 +138,7 @@ test('forecast worker reports a refueling encounter for blue route rendering',as
   const {Navigation}=await import('/src/navigation.js');
   const {Journey}=await import('/src/journey.js');
   const {flightRoute}=await import('/src/flight-route.js');
-  const route=flightRoute(1.05,5.6),navigation=new Navigation();navigation.fuel=50;
+  const route=flightRoute(1.05,7),navigation=new Navigation();navigation.fuel=50;
   const worker=new Worker('/src/prediction-worker.js',{type:'module'});
   try {
    return await new Promise((resolve,reject)=>{
@@ -146,8 +146,8 @@ test('forecast worker reports a refueling encounter for blue route rendering',as
     worker.onmessage=({data})=>resolve({willRefuel:data.willRefuel,count:new Float32Array(data.positions).length});
     worker.postMessage({version:1,elapsed:0,snapshot:{
      position:route,velocity:route.velocity,navigation,journey:new Journey(),
-     bodies:[{id:7,kind:'station',x:30,y:15,z:0,radius:3,mass:3,vx:-8}],
-     phase:1.05,radius:5.6,targetRadius:5.6,instability:.5,speed:1.5,
+     bodies:[{id:7,kind:'station',x:20,y:0,z:0,radius:3,mass:3,vx:-8}],
+     phase:1.05,radius:7,targetRadius:7,instability:.5,speed:1.5,
     }});
    });
   }finally{worker.terminate();}

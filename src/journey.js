@@ -1,5 +1,5 @@
 import { JOURNEY_SPEED } from './flight-frame.js';
-import { activeBodies } from './navigation.js';
+import { activeBodies, STATION_DOCKING_MARGIN } from './navigation.js';
 import { bodyClearance, gravitationalAcceleration } from './orbital-gravity.js';
 
 // Keep encounter time separate from forward journey progress. Captured flybys
@@ -11,17 +11,20 @@ export class Journey {
   advance(dt, position, velocity, asteroids, instability, radius, navigation = null) {
     if(dt<=0)return 0;
     asteroids=activeBodies(asteroids,navigation);
+    if(navigation&&this.orbit&&asteroids.some(body=>body.id===this.orbit.id&&body.kind==='station')&&navigation.stationId!==this.orbit.id)this.orbit=null;
     if(navigation?.stationId!=null&&this.orbit?.id!==navigation.stationId)this.orbit=null;
     if(this.orbit&&!asteroids.some(body=>body.id===this.orbit.id))this.orbit=null;
     if(this.orbit && (navigation?navigation.mode==='rescuing':instability<.35))this.orbit=null;
     if(!this.orbit && (instability>.7||navigation?.stationId!=null) && (!navigation||navigation.mode==='derailed')) {
       let candidate=null, nearest=Infinity;
       for(const body of asteroids) {
-        if(navigation?.stationId!=null&&body.id!==navigation.stationId)continue;
+        if(navigation&&body.kind==='station'&&navigation.stationId!==body.id)continue;
+        if(navigation&&this.orbit&&asteroids.some(body=>body.id===this.orbit.id&&body.kind==='station')&&navigation.stationId!==this.orbit.id)this.orbit=null;
+    if(navigation?.stationId!=null&&body.id!==navigation.stationId)continue;
         const relative={x:position.x-body.x,y:position.y-body.y,z:position.z-body.z};
         const distance=Math.hypot(relative.x,relative.y,relative.z);
         const station=body.kind==='station'&&navigation?.stationId===body.id;
-        if(distance>bodyClearance(body,radius)+(station?11:9))continue;
+        if(distance>bodyClearance(body,radius)+(station?STATION_DOCKING_MARGIN+1:9))continue;
         const v={x:velocity.x-(body.vx??0),y:velocity.y,z:velocity.z};
         const acceleration=gravitationalAcceleration(position,[body],instability);
         const mu=Math.hypot(acceleration.x,acceleration.y,acceleration.z)*distance*distance;
