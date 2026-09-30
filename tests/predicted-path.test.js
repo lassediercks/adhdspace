@@ -61,3 +61,13 @@ test('captured-orbit forecasts continue curving while forward journey progress i
  assert.ok(Math.abs(path.at(-1))>1);
  assert.equal(JSON.stringify(input),before);
 });
+
+
+test('default forecast covers three times the previous duration for single and multiple beams',()=>{
+ const input=snapshot(),single=predictPath(input);
+ assert.equal(single.length/3,1+42/(2*FORECAST_STEP));
+ assert.ok(Math.abs(single.at(-3)-42*2.8)<.001);
+ const multi=predictPath({...input,dual:1,targetDual:1});
+ assert.equal(multi.length/3,1+90/(2*FORECAST_STEP));
+ assert.ok(Math.abs(multi.at(-3)-90*2.8)<.001);
+});

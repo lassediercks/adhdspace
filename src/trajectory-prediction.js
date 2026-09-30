@@ -10,12 +10,13 @@ import { advanceFlyby } from './flyby-motion.js';
 
 export const FORECAST_STEP=1/30;
 export const FORECAST_SAMPLE_INTERVAL=2*FORECAST_STEP;
-export const FORECAST_SECONDS=14;
+export const FORECAST_SECONDS=42;
+export const MULTI_BEAM_FORECAST_SECONDS=90;
 const damp=(value,target,rate,dt)=>target+(value-target)*Math.exp(-rate*dt);
 
 // Forecast a private copy of the actual simulation. No guessed helix and no
 // mutation of live momentum, capture state, scenery, or recorded flight history.
-export function predictPath(snapshot, horizon=(snapshot.targetDual ? 30 : FORECAST_SECONDS)) {
+export function predictPath(snapshot, horizon=(snapshot.targetDual ? MULTI_BEAM_FORECAST_SECONDS : FORECAST_SECONDS)) {
   const physics=new OrbitalGravity();
   physics.reset(snapshot.position,snapshot.velocity);
   const journey=new Journey();
