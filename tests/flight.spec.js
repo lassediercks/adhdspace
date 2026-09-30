@@ -118,3 +118,26 @@ test('live random weather marks elevated yellow and high instability explicitly'
  await expect(page.locator('#instability-meter')).toHaveAttribute('aria-valuetext',/high/);
  await page.screenshot({path:'test-results/high-instability.png'});
 });
+
+test('forecast worker reports a refueling encounter for blue route rendering',async({page})=>{
+ await seedField(page);await page.goto('http://127.0.0.1:5173');
+ const result=await page.evaluate(async()=>{
+  const {Navigation}=await import('/src/navigation.js');
+  const {Journey}=await import('/src/journey.js');
+  const {flightRoute}=await import('/src/flight-route.js');
+  const route=flightRoute(1.05,5.6),navigation=new Navigation();navigation.fuel=50;
+  const worker=new Worker('/src/prediction-worker.js',{type:'module'});
+  try {
+   return await new Promise((resolve,reject)=>{
+    worker.onerror=event=>reject(new Error(event.message));
+    worker.onmessage=({data})=>resolve({willRefuel:data.willRefuel,count:new Float32Array(data.positions).length});
+    worker.postMessage({version:1,elapsed:0,snapshot:{
+     position:route,velocity:route.velocity,navigation,journey:new Journey(),
+     bodies:[{id:7,kind:'station',x:30,y:15,z:0,radius:3,mass:3,vx:-8}],
+     phase:1.05,radius:5.6,targetRadius:5.6,instability:.5,speed:1.5,
+    }});
+   });
+  }finally{worker.terminate();}
+ });
+ expect(result.willRefuel).toBe(true);expect(result.count).toBeGreaterThan(100);
+});

@@ -34,3 +34,17 @@ test('high instability makes revised forecasts more visible and responsive witho
  assert.ok(high.line.material.opacity>calm.line.material.opacity);
  assert.equal(high.geometry.attributes.position.getY(0),0);
 });
+
+test('a refueling forecast turns blue even in high weather and clears when the opportunity is lost',()=>{
+ const previousWorker=globalThis.Worker;globalThis.Worker=class { postMessage(){} };
+ let preview;
+ try {preview=new PredictedPath(new THREE.Group());}finally{globalThis.Worker=previousWorker;}
+ const points=new Float32Array([0,0,0,1,0,0,2,0,0]);
+ preview.apply(points,0,0,true);
+ preview.follow({x:0,y:0,z:0},0,0,10,1);
+ assert.equal(preview.line.material.color.getHex(),0x64b5ff);
+ assert.equal(preview.line.material.opacity,.55);
+ preview.apply(points,0,0,false);
+ preview.follow({x:0,y:0,z:0},0,0,10,1);
+ assert.equal(preview.line.material.color.getHex(),0xf19a7a);
+});

@@ -15,7 +15,7 @@ const damp=(value,target,rate,dt)=>target+(value-target)*Math.exp(-rate*dt);
 
 // Forecast physics under current weather, not future random changes. No guessed helix or
 // mutation of live momentum, capture state, scenery, or recorded flight history.
-export function predictPath(snapshot, horizon=(snapshot.targetDual ? MULTI_BEAM_FORECAST_SECONDS : FORECAST_SECONDS)) {
+export function forecastFlight(snapshot, horizon=(snapshot.targetDual ? MULTI_BEAM_FORECAST_SECONDS : FORECAST_SECONDS)) {
   const physics=new OrbitalGravity();
   physics.reset(snapshot.position,snapshot.velocity);
   const journey=new Journey();
@@ -29,6 +29,7 @@ export function predictPath(snapshot, horizon=(snapshot.targetDual ? MULTI_BEAM_
   let bodies=snapshot.bodies.map(body=>({...body}));
   let dual=snapshot.dual??0,flightSeconds=snapshot.flightSeconds;
   let phase=snapshot.phase,radius=snapshot.radius,instability=snapshot.instability;
+  let willRefuel=false;
   const points=[snapshot.position.x,snapshot.position.y,snapshot.position.z];
   const steps=Math.floor(horizon/FORECAST_STEP);
   for(let i=1;i<=steps;i++) {
@@ -42,6 +43,7 @@ export function predictPath(snapshot, horizon=(snapshot.targetDual ? MULTI_BEAM_
     // observation will revise this route on the next forecast refresh.
     if(navigation&&network)navigation.exposure=network.exposure(journey.distance);
     navigation?.advance(FORECAST_STEP,physics.position,physics.velocity,activeBodies(bodies,navigation),instability,radius,FORECAST_STEP/snapshot.speed);
+    if(navigation?.refueling)willRefuel=true;
     const previousRate=journey.rate;
     const travel=journey.advance(FORECAST_STEP,physics.position,physics.velocity,bodies,instability,radius,navigation);
     physics.velocity.x+=8*(previousRate-journey.rate);
@@ -53,6 +55,10 @@ export function predictPath(snapshot, horizon=(snapshot.targetDual ? MULTI_BEAM_
     physics.advance(FORECAST_STEP,target,sources,instability,radius,body?{body,normal:journey.orbit.normal}:null,route,navigation);
     if(i%2===0)points.push(physics.position.x+journey.distance-snapshot.journey.distance,physics.position.y,physics.position.z);
   }
-  return new Float32Array(points);
+  return {positions:new Float32Array(points),willRefuel};
 }
 
+
+export function predictPath(snapshot,horizon) {
+  return forecastFlight(snapshot,horizon).positions;
+}

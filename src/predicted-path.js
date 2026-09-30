@@ -8,6 +8,7 @@ export class PredictedPath {
     this.line=new THREE.Line(this.geometry,new THREE.LineBasicMaterial({color:0xa3c9e5,vertexColors:true,transparent:true,opacity:.32,depthWrite:false}));
     this.line.frustumCulled=false;
     parent.add(this.line);
+    this.willRefuel=false;
     this.weatherColor=new THREE.Color();
     this.startTime=0;
     this.anchorDistance=0;
@@ -17,7 +18,7 @@ export class PredictedPath {
     this.queued=null;
     this.worker=new Worker(new URL('./prediction-worker.js',import.meta.url),{type:'module'});
     this.worker.onmessage=({data})=>{
-      if(data.version===this.version)this.apply(new Float32Array(data.positions),data.elapsed,data.distance);
+      if(data.version===this.version)this.apply(new Float32Array(data.positions),data.elapsed,data.distance,data.willRefuel);
       this.busy=false;
       if(this.queued){const next=this.queued;this.queued=null;this.send(next);}
     };
@@ -36,7 +37,8 @@ export class PredictedPath {
     this.worker.postMessage(request);
   }
 
-  apply(positions, elapsed, distance) {
+  apply(positions, elapsed, distance, willRefuel=false) {
+    this.willRefuel=willRefuel;
     const previous=this.geometry.attributes.position?.array;
     const displayed=new Float32Array(positions);
     if(previous) {
@@ -71,9 +73,9 @@ export class PredictedPath {
 
   follow(position, distance, elapsed, dt=1/60, instability=0) {
     const level=instabilityLevel(instability),severity=Math.max(0,(instability-.6)/.4);
-    this.weatherColor.setHex(level==='high'?0xf19a7a:level==='elevated'?0xe6cb70:0xa3c9e5);
+    this.weatherColor.setHex(this.willRefuel?0x64b5ff:level==='high'?0xf19a7a:level==='elevated'?0xe6cb70:0xa3c9e5);
     this.line.material.color.lerp(this.weatherColor,1-Math.exp(-dt*4));
-    this.line.material.opacity=.32+.2*severity;
+    this.line.material.opacity=this.willRefuel?.55:.32+.2*severity;
     if(!this.pointCount)return;
     if(elapsed<this.startTime){this.line.visible=false;return;}
     // Align successive forecasts in time, then ease their geometry instead of
