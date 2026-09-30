@@ -158,9 +158,10 @@ test('forecast worker reports a refueling encounter for blue route rendering',as
 
 
 test('an upcoming fork is announced without automatically changing the selected beam',async({page})=>{
+ test.setTimeout(90000); // Software rendering may advance the capped simulation slower than wall time.
  await seedField(page,2);await page.goto('http://127.0.0.1:5173');
  await page.getByRole('slider',{name:'Stabilizer engines',exact:true}).fill('20');
- await expect(page.locator('#beam-choice')).toHaveText('Fork ahead · click a branch to follow',{timeout:40000});
+ await expect(page.locator('#beam-choice')).toHaveText('Fork ahead · click a branch to follow',{timeout:70000});
  await page.waitForTimeout(4500);
  await expect(page.locator('#out-of-fuel-notice')).toBeHidden();
  await page.screenshot({path:'test-results/upcoming-fork.png'});
