@@ -1,3 +1,4 @@
+import { SCENERY_SPEED } from './flight-frame.js';
 export const ASTEROID_COUNT=20;
 export const STATION_START_SECONDS=40;
 export const FIRST_STATION_DISTANCE=552;
@@ -35,7 +36,7 @@ export function spawnAsteroid(id, seed, generation=0,flightSeconds=0) {
   const y=Math.cos(angle)*radial,z=Math.sin(angle)*radial;
   const body = {
     id,seed,generation,x,y,z,radius,mass:asteroidMass(radius),
-    avoidanceRadius:radius*1.025,vx:-8,recycleBehind:distant?2400:220,
+    avoidanceRadius:radius*1.025,vx:-SCENERY_SPEED,recycleBehind:distant?2400:220,
     shape:[.45+random()*.55,.45+random()*.55,.45+random()*.55],
     roughness:.18+random()*.28,colors:palettes[Math.floor(random()*palettes.length)],
     geometrySeed:random()*100,
@@ -70,14 +71,14 @@ export function advanceFlyby(body, dt, shipPosition, progressRate, flightSeconds
     const station=spawnAsteroid(body.id,body.seed,body.generation+1,flightSeconds);
     const angle=station.geometrySeed,lead=SUPPLY_STATION_DISTANCE;
     return {...station,x:shipPosition.x+lead,y:supplyCenter.y+8*Math.cos(angle),z:supplyCenter.z+8*Math.sin(angle),
-      vx:-8*progressRate,openingStationSpawned:true,supplySpawnTime:flightSeconds};
+      vx:-SCENERY_SPEED*progressRate,openingStationSpawned:true,supplySpawnTime:flightSeconds};
   }
-  let next={...body,x:body.x-dt*8,vx:-8*progressRate};
+  let next={...body,x:body.x-dt*SCENERY_SPEED,vx:-SCENERY_SPEED*progressRate};
   const distance=Math.hypot(next.x-shipPosition.x,next.y-shipPosition.y,next.z-shipPosition.z);
   if(dt>0&&next.x<-(body.recycleBehind??84)&&distance>(body.seed===undefined?140:350)) {
     next=body.seed===undefined
       ? {...next,x:next.x+(body.recycleSpan??360),generation:(body.generation??0)+1}
-      : {...spawnAsteroid(body.id,body.seed,body.generation+1,flightSeconds),vx:-8*progressRate,openingStationSpawned:body.openingStationSpawned,supplySpawnTime:body.supplySpawnTime};
+      : {...spawnAsteroid(body.id,body.seed,body.generation+1,flightSeconds),vx:-SCENERY_SPEED*progressRate,openingStationSpawned:body.openingStationSpawned,supplySpawnTime:body.supplySpawnTime};
   }
   return next;
 }

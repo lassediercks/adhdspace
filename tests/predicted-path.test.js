@@ -1,3 +1,4 @@
+import { sceneryDistance } from '../src/flight-frame.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -16,7 +17,7 @@ test('forecast follows the nominal orbit and never mutates the live snapshot',()
  const path=predictPath(input,3);
  assert.equal(JSON.stringify(input),before);
  const end=[...path.slice(-3)];
- assert.ok(Math.abs(end[0]-3*2.8)<.001);
+ assert.ok(Math.abs(end[0]-3*8)<.001);
  assert.ok(Math.abs(end[1]-4*Math.cos(1.05+3*.45))<.002);
  assert.ok(Math.abs(end[2]-4*Math.sin(1.05+3*.45))<.002);
 });
@@ -47,7 +48,7 @@ test('forecast matches live integration including an upcoming randomized respawn
   physics.advance(FORECAST_STEP,{x:0,y:Math.cos(phase)*4,z:Math.sin(phase)*4},sources,0,4);
  }
  assert.equal(asteroids.sources[3].generation,1);
- const expected=[physics.position.x+journey.distance,physics.position.y,physics.position.z];
+ const expected=[physics.position.x+sceneryDistance(journey.distance),physics.position.y,physics.position.z];
  expected.forEach((value,i)=>assert.ok(Math.abs(value-predicted[predicted.length-3+i])<1e-4));
 });
 
@@ -66,8 +67,34 @@ test('captured-orbit forecasts continue curving while forward journey progress i
 test('default forecast covers three times the previous duration for single and multiple beams',()=>{
  const input=snapshot(),single=predictPath(input);
  assert.equal(single.length/3,1+42/(2*FORECAST_STEP));
- assert.ok(Math.abs(single.at(-3)-42*2.8)<.001);
+ assert.ok(Math.abs(single.at(-3)-42*8)<.001);
  const multi=predictPath({...input,dual:1,targetDual:1});
  assert.equal(multi.length/3,1+90/(2*FORECAST_STEP));
- assert.ok(Math.abs(multi.at(-3)-90*2.8)<.001);
+ assert.ok(Math.abs(multi.at(-3)-90*8)<.001);
+});
+
+test('a predicted capture loop is centered at the asteroid current position before it arrives',()=>{
+ const body={id:0,x:80,y:0,z:0,radius:6,mass:50,avoidanceRadius:6.15,vx:-8};
+ const input=snapshot([body]);input.instability=input.targetInstability=1;
+ const predicted=predictPath(input,30);
+ const physics=new OrbitalGravity(),journey=new Journey();
+ physics.reset(input.position,input.velocity);
+ let moving={...body},phase=input.phase,capturedSamples=0;
+ for(let i=1;i<=900;i++){
+  const dt=FORECAST_STEP;phase+=dt*.45;
+  const previous=journey.rate;
+  const travel=journey.advance(dt,physics.position,physics.velocity,[moving],1,4);
+  physics.velocity.x+=8*(previous-journey.rate);
+  moving={...moving,x:moving.x-travel*8,vx:-8*journey.rate};
+  const orbit=journey.orbit?{body:moving,normal:journey.orbit.normal}:null;
+  physics.advance(dt,{x:0,y:Math.cos(phase)*4,z:Math.sin(phase)*4},[moving],1,4,orbit);
+  if(i%2===0&&journey.rate===0){
+   const index=i/2*3;
+   // Relative to the visible body, the preview must equal the simulated orbit
+   // relative to the future body. This catches the old 2.8-versus-8 mismatch.
+   assert.ok(Math.abs((predicted[index]-body.x)-(physics.position.x-moving.x))<1e-4);
+   capturedSamples++;
+  }
+ }
+ assert.ok(capturedSamples>50,'fixture must actually forecast a sustained capture');
 });

@@ -1,3 +1,4 @@
+import { JOURNEY_SPEED } from './flight-frame.js';
 import { activeBodies } from './navigation.js';
 import { bodyClearance, gravitationalAcceleration } from './orbital-gravity.js';
 
@@ -44,7 +45,7 @@ export class Journey {
     this.rate+=(target-this.rate)*(1-Math.exp(-dt*2));
     if(Math.abs(this.rate-target)<.001)this.rate=target;
     const travel=dt*this.rate;
-    this.distance+=travel*2.8;
+    this.distance+=travel*JOURNEY_SPEED;
     return travel;
   }
 }

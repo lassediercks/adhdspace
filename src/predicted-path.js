@@ -1,3 +1,4 @@
+import { sceneryDistance } from './flight-frame.js';
 import { instabilityLevel } from './space-weather.js';
 import * as THREE from 'three';
 import { FORECAST_SAMPLE_INTERVAL } from './trajectory-prediction.js';
@@ -48,7 +49,7 @@ export class PredictedPath {
         for(let axis=0;axis<3;axis++) {
           displayed[i*3+axis]=previous[index*3+axis]*(1-fraction)+previous[(index+1)*3+axis]*fraction;
         }
-        displayed[i*3]+=this.anchorDistance-distance;
+        displayed[i*3]+=sceneryDistance(this.anchorDistance-distance);
       }
     }
     this.targetPositions=positions;
@@ -83,7 +84,7 @@ export class PredictedPath {
     const displayed=this.geometry.attributes.position.array,blend=1-Math.exp(-dt*(1.3+severity*3));
     for(let i=0;i<displayed.length;i++)displayed[i]+=(this.targetPositions[i]-displayed[i])*blend;
     const first=Math.min(this.pointCount-1,Math.floor((elapsed-this.startTime)/FORECAST_SAMPLE_INTERVAL));
-    this.line.position.x=this.anchorDistance-distance;
+    this.line.position.x=sceneryDistance(this.anchorDistance-distance);
     // Trim time already flown; pin the remaining preview to the current ship.
     this.geometry.attributes.position.setXYZ(first,position.x-this.line.position.x,position.y,position.z);
     this.geometry.attributes.position.needsUpdate=true;

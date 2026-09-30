@@ -1,3 +1,4 @@
+import { sceneryDistance } from './flight-frame.js';
 import { BeamNetwork, networkFlightRoute } from './beam-network.js';
 import { scheduledBeamCount } from './beam-schedule.js';
 import { Navigation, activeBodies } from './navigation.js';
@@ -54,7 +55,7 @@ export function forecastFlight(snapshot, horizon=(snapshot.targetDual ? MULTI_BE
     const route={phase,radius,dual,network,distance:journey.distance,forwardSpeed:journey.rate*2.8};
     const target=network?networkFlightRoute(phase,radius,dual,network,journey.distance,route.forwardSpeed):flightRoute(phase,radius,dual);
     physics.advance(FORECAST_STEP,target,sources,instability,radius,body?{body,normal:journey.orbit.normal}:null,route,navigation);
-    if(i%2===0)points.push(physics.position.x+journey.distance-snapshot.journey.distance,physics.position.y,physics.position.z);
+    if(i%2===0)points.push(physics.position.x+sceneryDistance(journey.distance-snapshot.journey.distance),physics.position.y,physics.position.z);
   }
   return {positions:new Float32Array(points),willRefuel};
 }

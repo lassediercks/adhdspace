@@ -1,3 +1,4 @@
+import { sceneryDistance } from '../src/flight-frame.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -70,7 +71,7 @@ test('forecast shares scheduled divergence and click selection with live flight'
   physics.advance(dt,target,[],0,2,null,{phase,radius:2,dual,network,distance:journey.distance,forwardSpeed:2.8},navigation);
   if(i%2===0) {
    const at=i/2*3;
-   assert.ok(Math.hypot(forecast[at]-physics.position.x-journey.distance,forecast[at+1]-physics.position.y,forecast[at+2]-physics.position.z)<1e-4);
+   assert.ok(Math.hypot(forecast[at]-physics.position.x-sceneryDistance(journey.distance),forecast[at+1]-physics.position.y,forecast[at+2]-physics.position.z)<1e-4);
   }
  }
 });

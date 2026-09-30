@@ -48,3 +48,17 @@ test('a refueling forecast turns blue even in high weather and clears when the o
  preview.follow({x:0,y:0,z:0},0,0,10,1);
  assert.equal(preview.line.material.color.getHex(),0xf19a7a);
 });
+
+test('forecast geometry moves with visible asteroids between worker updates and refreshes',()=>{
+ const previousWorker=globalThis.Worker;globalThis.Worker=class { postMessage(){} };
+ let preview;
+ try {preview=new PredictedPath(new THREE.Group());}finally{globalThis.Worker=previousWorker;}
+ preview.apply(new Float32Array([0,0,0,80,10,0,80,0,10]),0,0);
+ // One simulated second moves scenery eight units while journey advances 2.8.
+ preview.follow({x:0,y:0,z:0},2.8,0,0);
+ assert.equal(preview.line.position.x,-8);
+ assert.equal(preview.geometry.attributes.position.getX(1)+preview.line.position.x,72);
+ preview.apply(new Float32Array([0,0,0,72,10,0,72,0,10]),0,2.8);
+ preview.follow({x:0,y:0,z:0},2.8,0,0);
+ assert.equal(preview.geometry.attributes.position.getX(1)+preview.line.position.x,72);
+});

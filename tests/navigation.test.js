@@ -1,3 +1,4 @@
+import { sceneryDistance } from '../src/flight-frame.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Navigation } from '../src/navigation.js';
@@ -109,7 +110,7 @@ test('forecast reproduces slow controls and lock loss under observed weather, wi
   physics.advance(dt,flightRoute(phase,radius,dual),moving,instability,radius,body?{body,normal:journey.orbit.normal}:null,{phase,radius,dual},navigation);
   if(i%2===0) {
    const index=i/2*3;
-   assert.ok(Math.hypot(points[index]-(physics.position.x+journey.distance),points[index+1]-physics.position.y,points[index+2]-physics.position.z)<1e-4);
+   assert.ok(Math.hypot(points[index]-(physics.position.x+sceneryDistance(journey.distance)),points[index+1]-physics.position.y,points[index+2]-physics.position.z)<1e-4);
   }
  }
  assert.equal(navigation.mode,'derailed');assert.ok(dual>.9);
