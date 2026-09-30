@@ -38,13 +38,13 @@ Or run `just dev`. Vite prints the selected port and automatically tries the nex
 
 ## Flight
 
-The flight controls are **Coherence** and **Rescue boost**. Drag to orbit the ship-centered camera and scroll to zoom. Reload starts a new flight.
+The flight controls are **Stabilizer engines** and **Rescue boost**. Drag to orbit the ship-centered camera and scroll to zoom. Reload starts a new flight.
 
-Coherence starts at 43%. Higher coherence narrows the orbit and protects beam lock; 100% follows the beams directly but still transfers between them. Coherence changes ease over roughly ten seconds, with smooth heading changes and an easing forecast line.
+Stabilizer power starts at 43%. Higher stabilizer power narrows the orbit and protects beam lock; 100% follows the beams directly but still transfers between them. Stabilizer changes ease over roughly ten seconds, with smooth heading changes and an easing forecast line.
 
-Instability is automatic space weather, shown on the right. It follows a seeded mean-reverting, bell-shaped process around 50%, with rare pulses to 0% or 100%. High coherence greatly reduces derailment risk but does not eliminate it. The seeded risk process is shared with the forecast. Lost lock persists even when weather calms or coherence is raised. **Rescue boost** applies finite thrust to return to the primary beam, without teleporting or erasing history.
+Instability is automatic space weather, shown on the right. It follows a seeded mean-reverting, bell-shaped process around 50%, with rare pulses to 0% or 100%. High stabilizer power greatly reduces derailment risk but does not eliminate it. The seeded risk process is shared with the forecast. Lost lock persists even when weather calms or stabilizer power is raised. **Rescue boost** applies finite thrust to return to the primary beam, without teleporting or erasing history.
 
-A new beam appears every 30 seconds of active flight, starting with one and capped at ten. Three form a triangle, four a square, and larger counts form regular polygons. Adjacent beam spacing is always 8 units, independent of coherence. The forecast includes upcoming additions.
+A new beam appears every 30 seconds of active flight, starting with one and capped at ten. Three form a triangle, four a square, and larger counts form regular polygons. Adjacent beam spacing is always 8 units, independent of stabilizer power. The forecast includes upcoming additions.
 
 Asteroids use inverse-square gravity outside their bounding spheres and mass proportional to radius cubed. Position and velocity use kick–drift–kick integration at up to 240 substeps per simulated second. Guidance and collision avoidance are explicit thruster forces. This is an illustrative controlled simulation, not a full N-body model. Asteroid capture stops forward progress until rescue, while local motion continues.
 
@@ -72,4 +72,4 @@ The workflow in `.github/workflows/deploy.yml` tests, builds, and deploys on pus
 
 Deployment follows the [Vite GitHub Pages guide](https://vite.dev/guide/static-deploy.html#github-pages).
 
-Fuel is shown on the left. High coherence burns more fuel; a rescue boost costs 8%. Mint ring-shaped refueling stations use the same randomized passing field and gravitational model as asteroids. Lower coherence below 40% near a station to deliberately leave the beam and settle into its local orbit. Fuel charges while derailed within the station's servicing range. The station stays nearby until Rescue boost releases it and returns the ship to the primary beam. Running out of fuel loses beam lock; a station can still replenish an empty tank.
+Fuel is shown on the left. High stabilizer power burns more fuel; a rescue boost costs 8%. Mint ring-shaped refueling stations use the same randomized passing field and gravitational model as asteroids. Lower stabilizer power below 40% near a station to deliberately leave the beam and settle into its local orbit. Fuel charges while derailed within the station's servicing range. The station stays nearby until Rescue boost releases it and returns the ship to the primary beam. Running out of fuel loses beam lock; a station can still replenish an empty tank.
