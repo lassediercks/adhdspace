@@ -46,11 +46,11 @@ test('mobile controls and the right-hand weather indicator fit the viewport',asy
 test('refresh and restored form values stay synchronized with coherence defaults',async({page})=>{
  await seedField(page);await page.goto('http://127.0.0.1:5173');
  const coherence=page.getByRole('slider',{name:'Stabilizer engines',exact:true});await coherence.fill('100');
- await page.reload();await expect(coherence).toHaveValue('100');
- await expect(page.locator('#coherence-output')).toHaveText('100%');
- expect(await coherence.evaluate(el=>el.style.getPropertyValue('--fill'))).toBe('100%');
+ await page.reload();await expect(coherence).toHaveValue('0');
+ await expect(page.locator('#coherence-output')).toHaveText('0%');
+ expect(await coherence.evaluate(el=>el.style.getPropertyValue('--fill'))).toBe('0%');
  await page.evaluate(()=>{document.getElementById('coherence').value='91';window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));});
- await expect(coherence).toHaveValue('100');
+ await expect(coherence).toHaveValue('0');
 });
 
 test('a real seeded lock loss enables rescue and the burn recovers control',async({page})=>{
@@ -86,10 +86,11 @@ test('stabilizer lever moves vertically with pointer and keyboard input',async({
 test('engine consumption eases with the lever and empty fuel shows a central warning',async({page})=>{
  await seedField(page);await page.goto('http://127.0.0.1:5173');
  const usage=page.locator('#engine-fuel-rate'),warning=page.locator('#out-of-fuel-notice');
- await expect(usage).toHaveText('−3.33% / s');await expect(warning).toBeHidden();
+ await expect(usage).toHaveText('−0.03% / s');await expect(warning).toBeHidden();
  await page.getByRole('slider',{name:'Stabilizer engines',exact:true}).fill('20');
  await expect.poll(async()=>Number((await usage.textContent()).match(/[0-9.]+/)[0])).toBeLessThan(3);
  await page.reload();
+ await page.getByRole('slider',{name:'Stabilizer engines',exact:true}).fill('100');
  await expect(warning).toBeVisible({timeout:45000});
  await expect(warning.locator('strong')).toHaveText('OUT OF FUEL');await expect(usage).toHaveText('−0.00% / s');
  await expect(page.locator('#refueling-notice')).toBeHidden();
@@ -106,7 +107,7 @@ test('engine consumption eases with the lever and empty fuel shows a central war
  await expect(page.locator('#score-output')).toHaveText(score);
  await page.screenshot({path:'test-results/out-of-fuel.png'});
  await page.getByRole('button',{name:'Restart flight',exact:true}).click();
- await expect(warning).toBeHidden();await expect(lever).toBeEnabled();await expect(lever).toHaveValue('100');
+ await expect(warning).toBeHidden();await expect(lever).toBeEnabled();await expect(lever).toHaveValue('0');
  expect(Number((await page.locator('#score-output').textContent()).replaceAll(',',''))).toBeLessThan(15);
  expect(Number((await page.locator('#fuel-output').textContent()).replace('%',''))).toBeGreaterThan(95);
 });

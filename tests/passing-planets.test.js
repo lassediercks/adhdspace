@@ -22,8 +22,8 @@ test('all asteroids are visible immediately and move at a constant speed without
  assert.deepEqual(asteroids.sources,initial);
 });
 
-test('repeated live body encounters respect clearance at every radius and pull setting',()=>{
- for(const radius of [2,4,7])for(const pull of [0,1]) {
+test('repeated live body encounters respect clearance with powered stabilizers at every pull setting',()=>{
+ for(const radius of [2,4,5.6])for(const pull of [0,1]) {
   const asteroids=new PassingAsteroids(new THREE.Scene(),{seed:31});
   const gravity=new OrbitalGravity();
   for(let frame=0;frame<1800;frame++) {

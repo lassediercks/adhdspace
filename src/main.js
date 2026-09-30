@@ -20,7 +20,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const $ = (id) => document.getElementById(id);
-const DEFAULT_FLIGHT = Object.freeze({speed:1.5,coherence:100,radius:0,phase:1.05,elapsed:0,beamCount:1});
+const DEFAULT_FLIGHT = Object.freeze({speed:1.5,coherence:0,radius:7,phase:1.05,elapsed:0,beamCount:1});
 const state = {playing:true,...DEFAULT_FLIGHT};
 let renderer;
 try {
@@ -98,7 +98,8 @@ const weather = new SpaceWeather();
 const nominalPosition = new THREE.Vector3();
 const previousPosition = new THREE.Vector3();
 let currentInstability = weather.value;
-const initialRoute=flightRoute(state.phase,state.radius,state.beamCount-1);
+// Launch along the beam. Engine power controls future forces, never initial momentum.
+const initialRoute=flightRoute(state.phase,0,0);
 ship.position.copy(initialRoute);
 gravity.reset(ship.position,initialRoute.velocity);
 const direction=new THREE.Vector3(), shipAxis=new THREE.Vector3(1,0,0);

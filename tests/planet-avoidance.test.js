@@ -20,8 +20,8 @@ function encounter(radius, dt = 1/60) {
   return {minGap,maxStep,earlyDeviation};
 }
 
-test('incoming obstacles are anticipated and passed outside their full bounds',()=>{
- for(const radius of [2,4,7]) {
+test('with powered stabilizers, incoming obstacles are anticipated and passed outside their full bounds',()=>{
+ for(const radius of [2,4,5.6]) {
   const result=encounter(radius);
   assert.ok(result.minGap>=-1e-5,JSON.stringify({radius,...result}));
   assert.ok(result.earlyDeviation>.3,'ship must steer before contact');
@@ -32,7 +32,7 @@ test('incoming obstacles are anticipated and passed outside their full bounds',(
 test('clearance follows orbit radius and remains safe at low frame rates',()=>{
  const body={radius:2,avoidanceRadius:4};
  assert.equal(bodyClearance(body,7)-bodyClearance(body,2),5);
- assert.ok(encounter(7,1/20).minGap>=-1e-5);
+ assert.ok(encounter(5.6,1/20).minGap>=-1e-5);
 });
 
 test('avoidance near a body is continuous and pausing freezes it',()=>{

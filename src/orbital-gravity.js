@@ -59,7 +59,9 @@ export class OrbitalGravity {
       y: (nominal.acceleration?.y ?? -OMEGA * OMEGA * nominal.y) + 0.8 * (nominal.y-position.y) + 1.5 * ((nominal.velocity?.y ?? -OMEGA*nominal.z)-velocity.y),
       z: (nominal.acceleration?.z ?? -OMEGA * OMEGA * nominal.z) + 0.8 * (nominal.z-position.z) + 1.5 * ((nominal.velocity?.z ?? OMEGA*nominal.y)-velocity.z),
     };
-    if(orbit&&!rescuing) {
+    const docking=orbit?.body.kind==='station';
+    const poweredOrbit=orbit&&(docking||beamGuidanceStrength(radius)>0);
+    if(poweredOrbit&&!rescuing) {
       const body=asteroids.find(p=>p.id===orbit.body.id)??orbit.body;
       const radial={x:position.x-body.x,y:position.y-body.y,z:position.z-body.z};
       const distance=Math.max(length(radial),.001);
@@ -81,7 +83,7 @@ export class OrbitalGravity {
     const disruption=Math.min(1,derailmentRisk(strength,radius)*(navigation?.exposure??1));
     const lock=(navigation?.lock??1)*(navigation?.fuel===0?0:beamGuidanceStrength(radius));
     limit(guidance,rescuing?24:MAX_GUIDANCE_ACCELERATION*(orbit?1:1-.9*disruption));
-    if(!orbit||rescuing) {
+    if(!poweredOrbit||rescuing) {
       const compensation=limit({x:-acceleration.x,y:-acceleration.y,z:-acceleration.z},MAX_AVOIDANCE_ACCELERATION);
       for(const axis of AXES) {
         guidance[axis]*=rescuing?1:lock;
@@ -106,7 +108,7 @@ export class OrbitalGravity {
       for (const axis of AXES) avoidance[axis] += normal[axis]*thrust;
     }
     limit(avoidance, MAX_AVOIDANCE_ACCELERATION);
-    for (const axis of AXES) acceleration[axis] += avoidance[axis];
+    for (const axis of AXES) acceleration[axis] += avoidance[axis]*(rescuing||docking?1:lock);
     return acceleration;
   }
 

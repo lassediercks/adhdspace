@@ -42,3 +42,32 @@ test('guidance ramps down continuously near zero power and the forecast shows th
  assert.ok(Math.abs(path.at(-2)-7)<1e-6);
  assert.ok(Math.abs(path.at(-1)-20)<1e-6);
 });
+
+
+test('launch on the beam stays straight until a flyby supplies sideways momentum',()=>{
+ const physics=new OrbitalGravity(),nav=new Navigation();
+ const origin={x:0,y:0,z:0};physics.reset(origin,origin);
+ let phase=0;
+ const tick=bodies=>{
+  const dt=1/60;phase+=dt*.45;
+  nav.advance(dt,physics.position,physics.velocity,bodies,.5,7);
+  physics.advance(dt,flightRoute(phase,7),bodies,.5,7,null,{phase,radius:7,dual:0},nav);
+ };
+ for(let i=0;i<300;i++)tick([]);
+ assert.deepEqual(physics.position,origin);
+ assert.deepEqual(physics.velocity,origin);
+ assert.equal(nav.mode,'tracking');
+ // A nearby moving asteroid must pull, without hidden avoidance thrusters.
+ for(let i=0;i<300;i++)tick([{id:0,kind:'asteroid',x:20-i*8/60,y:12,z:0,radius:3,mass:3.24,vx:-8}]);
+ assert.ok(physics.position.y>1);
+ assert.ok(physics.velocity.y>.5);
+ assert.equal(nav.mode,'derailed');
+ assert.deepEqual(physics.thrustAcceleration,origin);
+ const before={...physics.position},velocity={...physics.velocity};
+ for(let i=0;i<120;i++)tick([]);
+ assert.ok(Math.abs(physics.position.y-before.y-velocity.y*2)<1e-8);
+ assert.deepEqual(physics.velocity,velocity);
+ const path=predictPath({position:origin,velocity:origin,journey:new Journey(),navigation:new Navigation(),
+  bodies:[],phase:0,radius:7,targetRadius:7,instability:.5,speed:1.5},10);
+ assert.equal(path.at(-2),0);assert.equal(path.at(-1),0);assert.ok(path.at(-3)>79);
+});

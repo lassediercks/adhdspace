@@ -18,7 +18,7 @@ export const fuelBurnRate=radius=>.02+(100/45-.02)*(1-Math.max(0,Math.min(1,radi
 export class Navigation {
   constructor(seed=31) { this.seed=seed>>>0;this.reset(); }
   reset() {
-    this.mode='tracking';this.lock=1;this.hazard=0;this.immunity=0;
+    this.mode='tracking';this.lock=1;this.hazard=0;this.immunity=0;this.unpoweredImpulse=0;
     this.refuelElapsed=0;this.refuelStartFuel=0;this.refuelKey=null;this.consumedStations=[];
     this.exposure=1;this.fuel=100;this.cooldown=0;this.refueling=false;this.stationId=null;
     let value=(this.seed^0x9e3779b9)>>>0;
@@ -37,7 +37,7 @@ export class Navigation {
     const enginesOff=radius>=REFUEL_MIN_RADIUS;
     if(!enginesOff&&this.stationId!==null){
       this.stationId=null;this.refuelKey=null;this.refuelElapsed=0;this.refueling=false;
-      this.mode='tracking';this.hazard=0;this.immunity=12;
+      this.mode='tracking';this.hazard=0;this.immunity=12;this.unpoweredImpulse=0;
     }
     this.cooldown=Math.max(0,this.cooldown-realSeconds);
     this.fuel=Math.max(0,this.fuel-dt*fuelBurnRate(radius));
@@ -68,7 +68,7 @@ export class Navigation {
           this.fuel=100;this.consumedStations.push(key);this.stationId=null;this.refueling=false;
           // A serviced ship can steer again. Keep momentum and ease lock back
           // in below; stale encounter risk must not immediately derail departure.
-          this.mode='tracking';this.hazard=0;this.immunity=12;
+          this.mode='tracking';this.hazard=0;this.immunity=12;this.unpoweredImpulse=0;
           // Any other station in immediate docking range is unnecessary now.
           for(const {body:nearby} of stations){
             const nearbyKey=stationKey(nearby);
@@ -83,11 +83,16 @@ export class Navigation {
     if(this.mode==='tracking'&&this.immunity===0) {
       const g=gravitationalAcceleration(position,activeBodies(bodies,this),instability);
       const pressure=Math.hypot(g.x,g.y,g.z);
+      // An unpowered flyby loses lock through actual sideways gravity, even
+      // when weather is too calm to trigger the stochastic powered failure.
+      if(enginesOff)this.unpoweredImpulse+=dt*Math.hypot(g.y,g.z);
+      else this.unpoweredImpulse=0;
+      if(this.unpoweredImpulse>=.5)this.mode='derailed';
       this.hazard+=dt*.35*derailmentRisk(instability,radius)*this.exposure*pressure/(pressure+3);
       if(this.hazard>=this.threshold)this.mode='derailed';
     }
     if(this.mode==='rescuing'&&Math.hypot(position.x,position.y,position.z)<.6&&Math.hypot(velocity.x,velocity.y,velocity.z)<.8) {
-      this.mode='tracking';this.immunity=12;this.hazard=0;
+      this.mode='tracking';this.immunity=12;this.hazard=0;this.unpoweredImpulse=0;
     }
     this.lock+=(Number(this.mode==='tracking')-this.lock)*(1-Math.exp(-dt*.8));
   }

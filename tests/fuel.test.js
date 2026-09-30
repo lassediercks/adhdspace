@@ -89,9 +89,9 @@ test('a partial tank takes exactly ten real seconds and consumed generations sta
  assert.equal(activeBodies([{...station,generation:1}],nav).length,1);
 });
 
-test('zero engines and zero gravity do not stall a captured ship',()=>{
+test('station docking thrusters keep a captured ship moving with stabilizers off',()=>{
  const physics=new OrbitalGravity(),nav=new Navigation();nav.mode='derailed';nav.lock=0;
- const body={id:1,x:0,y:0,z:0,radius:3,mass:3,vx:0};
+ const body={id:1,kind:'station',x:0,y:0,z:0,radius:3,mass:3,vx:0};
  physics.reset({x:0,y:18,z:0},origin);
  const orbit={body,normal:{x:1,y:0,z:0}};
  for(let i=0;i<3600;i++)physics.advance(1/60,flightRoute(0,7),[body],0,7,orbit,null,nav);
