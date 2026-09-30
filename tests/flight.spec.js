@@ -16,6 +16,8 @@ test('flight offers only coherence and rescue, with read-only weather and an alw
  await expect(controls.getByRole('button')).toHaveCount(1);
  await expect(page.getByRole('switch')).toHaveCount(0);
  await expect(page.getByRole('meter',{name:'Instability',exact:true})).toBeVisible();
+ await expect(page.getByRole('meter',{name:'Fuel',exact:true})).toBeVisible();
+ await expect(page.locator('#fuel-rate')).toHaveText(/−[0-9]+\.[0-9]{2}% \/ s/);
  await expect(page.getByRole('button',{name:'Rescue boost',exact:true})).toBeDisabled();
  const coherence=page.getByRole('slider',{name:'Coherence',exact:true});
  await coherence.fill('100');await expect(page.locator('#coherence-output')).toHaveText('100%');
@@ -33,6 +35,7 @@ test('mobile controls and the right-hand weather indicator fit the viewport',asy
  await expect(page.getByRole('button',{name:'Rescue boost',exact:true})).toBeVisible();
  const meter=page.getByRole('meter',{name:'Instability',exact:true});await expect(meter).toBeVisible();
  expect((await meter.boundingBox()).x).toBeGreaterThan(300);
+ expect((await page.getByRole('meter',{name:'Fuel',exact:true}).boundingBox()).x).toBeLessThan(90);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.screenshot({path:'test-results/mobile.png'});
 });

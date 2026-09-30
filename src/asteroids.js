@@ -3,6 +3,10 @@ import { advanceFlyby, spawnAsteroid, ASTEROID_COUNT } from './flyby-motion.js';
 import { toonMaterial, facetedGeometry } from './toon-style.js';
 
 function asteroidGeometry(definition, seed) {
+  if(definition.kind==='station') {
+    const geometry=new THREE.TorusGeometry(.78,.18,4,12);
+    geometry.rotateY(Math.PI/2);return facetedGeometry(geometry);
+  }
   const geometry = facetedGeometry(new THREE.IcosahedronGeometry(1, definition.radius < 1.2 ? 0 : 1));
   const positions = geometry.attributes.position;
   let extent = 0;

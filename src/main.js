@@ -1,5 +1,5 @@
 import { scheduledBeamCount } from './beam-schedule.js';
-import { Navigation } from './navigation.js';
+import { Navigation, RESCUE_FUEL, fuelBurnRate } from './navigation.js';
 import { smoothControl } from './flight-controls.js';
 import { SpaceWeather } from './space-weather.js';
 import { SpaceBackdrop } from './space-backdrop.js';
@@ -113,7 +113,7 @@ function animate(){
  previousPosition.copy(ship.position);
  if(step>0)currentInstability=weather.advance(dt);
  navigation.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius);
- updateRescueControl();updateWeatherIndicator();
+ updateRescueControl();updateWeatherIndicator();updateFuelIndicator();
  const previousRate=journey.rate;
  const journeyStep=journey.advance(step,ship.position,gravity.velocity,asteroids.sources,currentInstability,currentRadius,navigation);
  // Moving into/out of the local body frame preserves relative velocity.
@@ -190,15 +190,24 @@ function updateWeatherIndicator(){
  $('instability-meter').setAttribute('aria-valuenow',value);
  $('weather-fill').style.height=`${value}%`;
 }
+function updateFuelIndicator(){
+ const value=Math.round(navigation.fuel);
+ $('fuel-output').textContent=`${value}%`;
+ $('fuel-meter').setAttribute('aria-valuenow',value);
+ $('fuel-fill').style.height=`${navigation.fuel}%`;
+ $('fuel-label').textContent=navigation.refueling?'REFUELING':'FUEL';
+ const rate=(navigation.refueling?10-fuelBurnRate(currentRadius):-fuelBurnRate(currentRadius))*state.speed;
+ $('fuel-rate').textContent=`${rate>0?'+':'−'}${Math.abs(rate).toFixed(2)}% / s`;
+}
 function updateRescueControl(){
- const button=$('rescue');button.disabled=navigation.mode!=='derailed';
+ const button=$('rescue');button.disabled=navigation.mode!=='derailed'||navigation.fuel<RESCUE_FUEL;
  button.textContent=navigation.mode==='rescuing'?'Boosting…':'Rescue boost';
- button.title=navigation.mode==='derailed'?'Beam lock lost — boost back to the primary beam':'Available when beam lock is lost';
+ button.title=navigation.fuel<RESCUE_FUEL?'Refuel at a station — rescue needs 8% fuel':navigation.mode==='derailed'?'Boost back to the primary beam (8% fuel)':'Available when beam lock is lost';
 }
 $('rescue').addEventListener('click',()=>{
  if(navigation.rescue()){predictionDirty=true;updateRescueControl();}
 });
-updateRescueControl();updateWeatherIndicator();
+updateRescueControl();updateWeatherIndicator();updateFuelIndicator();
 $('info-button').addEventListener('click',()=>$('info-dialog').showModal());
 $('close-info').addEventListener('click',()=>$('info-dialog').close());
 $('resume-exploring').addEventListener('click',()=>$('info-dialog').close());

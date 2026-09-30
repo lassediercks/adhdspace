@@ -9,17 +9,18 @@ export class Journey {
   advance(dt, position, velocity, asteroids, instability, radius, navigation = null) {
     if(dt<=0)return 0;
     if(this.orbit && (navigation?navigation.mode==='rescuing':instability<.35))this.orbit=null;
-    if(!this.orbit && instability>.7 && (!navigation||navigation.mode==='derailed')) {
+    if(!this.orbit && (instability>.7||navigation?.stationId!=null) && (!navigation||navigation.mode==='derailed')) {
       let candidate=null, nearest=Infinity;
       for(const body of asteroids) {
         const relative={x:position.x-body.x,y:position.y-body.y,z:position.z-body.z};
         const distance=Math.hypot(relative.x,relative.y,relative.z);
-        if(distance>bodyClearance(body,radius)+9)continue;
+        const station=body.kind==='station'&&navigation?.stationId===body.id;
+        if(distance>bodyClearance(body,radius)+(station?11:9))continue;
         const v={x:velocity.x-(body.vx??0),y:velocity.y,z:velocity.z};
         const acceleration=gravitationalAcceleration(position,[body],instability);
         const mu=Math.hypot(acceleration.x,acceleration.y,acceleration.z)*distance*distance;
         const energy=(v.x*v.x+v.y*v.y+v.z*v.z)/2-mu/distance;
-        if(energy>=0 || distance>=nearest)continue;
+        if((energy>=0&&!station) || distance>=nearest)continue;
         let normal={x:relative.y*v.z-relative.z*v.y,y:relative.z*v.x-relative.x*v.z,z:relative.x*v.y-relative.y*v.x};
         const magnitude=Math.hypot(normal.x,normal.y,normal.z);
         if(magnitude<.01)normal={x:1,y:0,z:0};

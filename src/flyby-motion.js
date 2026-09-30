@@ -30,7 +30,7 @@ export function spawnAsteroid(id, seed, generation=0) {
   const extent=distant?Math.abs(x)*1.5:40;
   const radial=Math.sqrt(random())*extent;
   const y=Math.cos(angle)*radial,z=Math.sin(angle)*radial;
-  return {
+  const body = {
     id,seed,generation,x,y,z,radius,mass:asteroidMass(radius),
     avoidanceRadius:radius*1.025,vx:-8,recycleBehind:distant?2400:220,
     shape:[.45+random()*.55,.45+random()*.55,.45+random()*.55],
@@ -38,6 +38,15 @@ export function spawnAsteroid(id, seed, generation=0) {
     geometrySeed:random()*100,
     spin:[(random()-.5)*.18,(random()-.5)*.2,(random()-.5)*.12],
   };
+  // Keep one nearby station slot, with extra stations occurring randomly.
+  // Their positions use the same unbiased field sampling as the rocks.
+  body.kind=!distant&&(id===7||random()<.12)?'station':'asteroid';
+  if(body.kind==='station') {
+    body.radius=Math.max(2.5,body.radius);body.mass=asteroidMass(body.radius);
+    body.avoidanceRadius=body.radius*1.025;body.colors=['#a4d8c7'];
+    body.spin=body.spin.map(value=>value*.25);
+  }
+  return body;
 }
 
 export function advanceFlyby(body, dt, shipPosition, progressRate) {

@@ -72,3 +72,4 @@ The workflow in `.github/workflows/deploy.yml` tests, builds, and deploys on pus
 
 Deployment follows the [Vite GitHub Pages guide](https://vite.dev/guide/static-deploy.html#github-pages).
 
+Fuel is shown on the left. High coherence burns more fuel; a rescue boost costs 8%. Mint ring-shaped refueling stations use the same randomized passing field and gravitational model as asteroids. Lower coherence below 40% near a station to deliberately leave the beam and settle into its local orbit. Fuel charges while derailed within the station's servicing range. The station stays nearby until Rescue boost releases it and returns the ship to the primary beam. Running out of fuel loses beam lock; a station can still replenish an empty tank.
