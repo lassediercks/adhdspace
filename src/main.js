@@ -219,7 +219,10 @@ function updateFuelIndicator(){
  $('fuel-meter').setAttribute('aria-valuenow',value);
  $('fuel-fill').style.height=`${navigation.fuel}%`;
  $('fuel-label').textContent=navigation.refueling?'REFUELING':'FUEL';
- const rate=navigation.refueling?(100-navigation.refuelStartFuel)/REFUEL_SECONDS:-fuelBurnRate(currentRadius)*state.speed;
+ const burn=navigation.fuel>0?fuelBurnRate(currentRadius)*state.speed:0;
+ $('engine-fuel-rate').textContent=`−${burn.toFixed(2)}% / s`;
+ $('out-of-fuel-notice').hidden=navigation.fuel>0||navigation.refueling;
+ const rate=navigation.refueling?(100-navigation.refuelStartFuel)/REFUEL_SECONDS:-burn;
  $('refueling-notice').hidden=!navigation.refueling;
  $('refueling-progress').value=navigation.refuelElapsed;
  $('refueling-time').textContent=`${Math.ceil(REFUEL_SECONDS-navigation.refuelElapsed)}s to full`;

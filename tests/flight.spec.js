@@ -81,3 +81,19 @@ test('stabilizer lever moves vertically with pointer and keyboard input',async({
  await lever.focus();await page.keyboard.press('Home');await expect(lever).toHaveValue('0');
  await page.keyboard.press('ArrowUp');await expect(lever).toHaveValue('1');
 });
+
+
+test('engine consumption eases with the lever and empty fuel shows a central warning',async({page})=>{
+ await seedField(page);await page.goto('http://127.0.0.1:5173');
+ const usage=page.locator('#engine-fuel-rate'),warning=page.locator('#out-of-fuel-notice');
+ await expect(usage).toHaveText('−3.33% / s');await expect(warning).toBeHidden();
+ await page.getByRole('slider',{name:'Stabilizer engines',exact:true}).fill('20');
+ await expect.poll(async()=>Number((await usage.textContent()).match(/[0-9.]+/)[0])).toBeLessThan(3);
+ await page.reload();
+ await expect(warning).toBeVisible({timeout:45000});
+ await expect(warning).toHaveText('OUT OF FUEL');await expect(usage).toHaveText('−0.00% / s');
+ await expect(page.locator('#refueling-notice')).toBeHidden();
+ const box=await warning.boundingBox();
+ expect(Math.abs(box.x+box.width/2-720)).toBeLessThan(2);
+ await page.screenshot({path:'test-results/out-of-fuel.png'});
+});

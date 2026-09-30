@@ -12,6 +12,7 @@
     <output id="score-rate" aria-label="Current scoring rate">+10.0 pts / s</output>
   </aside>
   <main>
+    <div id="out-of-fuel-notice" class="out-of-fuel-notice" role="status" hidden><strong>OUT OF FUEL</strong></div>
     <div id="refueling-notice" class="refueling-notice" role="status" hidden>
       <strong>REFUELING</strong>
       <progress id="refueling-progress" max="10" value="0" aria-label="Refueling progress"></progress>
@@ -24,7 +25,10 @@
     <div class="console-heading"><span><span class="tiny-cross">+</span> FLIGHT CONTROLS</span></div>
     <div class="control-row">
       <div class="slider-control engine-lever"><label for="coherence">STABILIZER ENGINES <output id="coherence-output">100%</output></label><input id="coherence" type="range" autocomplete="off" min="0" max="100" step="1" value="100" aria-label="Stabilizer engines" aria-orientation="vertical" orient="vertical" title="Higher stabilizer power narrows the orbit and protects against derailment"></div>
-      <button id="rescue" class="rescue-button" aria-label="Rescue boost" disabled>Rescue boost</button>
+      <div class="rescue-controls">
+        <div class="engine-consumption"><span>FUEL USE</span><output id="engine-fuel-rate" aria-label="Engine fuel consumption">−3.33% / s</output></div>
+        <button id="rescue" class="rescue-button" aria-label="Rescue boost" disabled>Rescue boost</button>
+      </div>
     </div>
   </section>
   <aside class="weather-panel fuel-panel" aria-label="Fuel supply">

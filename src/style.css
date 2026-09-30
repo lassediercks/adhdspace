@@ -36,3 +36,11 @@
 #score-output { font-size:26px; font-weight:500; }
 #score-rate { font-size:10px; color:#96a5a8; }
 @media(max-width:650px){.score-panel{top:20px}#score-output{font-size:22px}}
+
+.out-of-fuel-notice { position:absolute; z-index:5; left:50%; top:43%; transform:translate(-50%,-50%); width:95%; text-align:center; color:#d5b88a; pointer-events:none; text-shadow:0 2px 18px #061326; }
+.out-of-fuel-notice[hidden] { display:none; }
+.out-of-fuel-notice strong { font-size:clamp(27px,5vw,54px); letter-spacing:.12em; font-weight:600; }
+.rescue-controls { display:flex; flex-direction:column; align-items:center; gap:20px; }
+.engine-consumption { display:flex; flex-direction:column; align-items:center; gap:8px; font-variant-numeric:tabular-nums; }
+.engine-consumption span { font-size:8px; letter-spacing:1px; color:#96a5a8; }
+.engine-consumption output { font-size:12px; color:#d5b88a; white-space:nowrap; }
