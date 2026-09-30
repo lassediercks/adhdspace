@@ -74,3 +74,34 @@ test('forecast shares scheduled divergence and click selection with live flight'
   }
  }
 });
+
+
+test('far branches fade smoothly, retire permanently and reject clicks without hiding the followed beam',()=>{
+ const network=new BeamNetwork();network.advance(30,0,0);
+ network.beams[1]={slopeY:.05,slopeZ:0,bornDistance:0,divergent:true};
+ assert.equal(network.opacity(1,800),1);
+ assert.ok(Math.abs(network.opacity(1,1200)-.5)<1e-10);
+ assert.equal(network.opacity(1,1600),0);
+ const before=networkFlightRoute(8,3,1,network,1599.99,2.8);
+ network.advance(30,1600,1/60);
+ assert.equal(network.choose(1),false);assert.equal(network.beams[1].retired,true);
+ assert.equal(network.opacity(0,1600),1);
+ const after=networkFlightRoute(8,3,1,network,1600,2.8);
+ assert.ok(Math.hypot(after.y-before.y,after.z-before.z)<.001);
+ assert.ok(Math.hypot(after.velocity.y-before.velocity.y,after.velocity.z-before.velocity.z)<.001);
+ network.advance(30,0,0);assert.equal(network.opacity(1),0);
+ const followed=new BeamNetwork();followed.advance(30,0,0);
+ followed.beams[1]={slopeY:.05,slopeZ:0,bornDistance:0,divergent:true};
+ assert.ok(followed.choose(1));followed.advance(30,2000,1);
+ assert.equal(followed.opacity(1),1);assert.equal(followed.opacity(0),0);
+ assert.equal(followed.choose(0),false);
+ followed.rescueToPrimary();assert.equal(followed.selected,0);assert.equal(followed.opacity(0),1);
+});
+
+test('parallel beams keep their brightness even on a long journey',()=>{
+ const network=new BeamNetwork();network.advance(30,0,0);
+ network.beams[1]={slopeY:0,slopeZ:0,bornDistance:0,divergent:false};
+ network.advance(30,100000,1);
+ assert.equal(network.opacity(0),1);assert.equal(network.opacity(1),1);
+ assert.ok(network.choose(1));
+});

@@ -52,7 +52,7 @@ export class OccludedBeam {
   constructor(scene, capacity) {
     const geometry=new THREE.CylinderGeometry(1,1,1,6,1,false);
     geometry.rotateZ(Math.PI/2);
-    this.core=new THREE.InstancedMesh(geometry,new THREE.MeshBasicMaterial({color:0xafffe4}),capacity);
+    this.core=new THREE.InstancedMesh(geometry,new THREE.MeshBasicMaterial({color:0xafffe4,transparent:true,depthWrite:false}),capacity);
     this.rim=new THREE.InstancedMesh(geometry,new THREE.MeshBasicMaterial({color:0x41bdac,transparent:true,opacity:.18,depthWrite:false}),capacity);
     this.pick=new THREE.InstancedMesh(geometry,new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false,depthTest:false}),capacity);
     this.core.frustumCulled=this.rim.frustumCulled=this.pick.frustumCulled=false;

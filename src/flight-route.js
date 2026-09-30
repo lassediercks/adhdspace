@@ -18,14 +18,14 @@ const smoothSecond=u=>60*u*(2*u*u-3*u+1);
 // Orbit each vertex, then transfer to the next. Both phases meet with zero
 // transverse velocity and acceleration, including the closing polygon edge.
 // At zero radius the orbit phase follows the beam, and transfers still occur.
-function polygonRoute(phase, radius, count, centers=null) {
+function polygonRoute(phase, radius, count, centers=null, orientationCenters=centers) {
   const duration=4*Math.PI, cycle=duration*count;
   const wrapped=((phase%cycle)+cycle)%cycle;
   const index=Math.floor(wrapped/duration), local=wrapped-index*duration;
   const center=centers?.[index]??beamCenter(index,count),next=centers?.[(index+1)%count]??beamCenter((index+1)%count,count);
-  const mean=centers?centers.reduce((sum,p)=>({y:sum.y+p.y/count,z:sum.z+p.z/count}),{y:0,z:0}):null;
-  const startAngle=mean?Math.atan2(center.z-mean.z,center.y-mean.y):Math.PI+Math.PI/count-index*2*Math.PI/count;
-  const finishAngle=mean?Math.atan2(next.z-mean.z,next.y-mean.y):startAngle-2*Math.PI/count;
+  const mean=orientationCenters?orientationCenters.reduce((sum,p)=>({y:sum.y+p.y/count,z:sum.z+p.z/count}),{y:0,z:0}):null;
+  const startAngle=mean?Math.atan2(orientationCenters[index].z-mean.z,orientationCenters[index].y-mean.y):Math.PI+Math.PI/count-index*2*Math.PI/count;
+  const finishAngle=mean?Math.atan2(orientationCenters[(index+1)%count].z-mean.z,orientationCenters[(index+1)%count].y-mean.y):startAngle-2*Math.PI/count;
   const start={y:center.y+radius*Math.cos(startAngle),z:center.z+radius*Math.sin(startAngle)};
   const finish={y:next.y+radius*Math.cos(finishAngle),z:next.z+radius*Math.sin(finishAngle)};
   if(local<3*Math.PI) {
@@ -76,14 +76,16 @@ export function flightRoute(phase, radius, dual = 0) {
 
 
 // The same orbital shapes, using the actual cross-section of angled beams.
-export function routeThroughBeams(phase,radius,centers) {
+export function routeThroughBeams(phase,radius,centers,orientationCenters=centers) {
  if(centers.length===1) {
   const route=flightRoute(phase,radius);
   route.y+=centers[0].y;route.z+=centers[0].z;return route;
  }
- if(centers.length>2)return polygonRoute(phase,radius,centers.length,centers);
+ if(centers.length>2)return polygonRoute(phase,radius,centers.length,centers,orientationCenters);
  const [a,b]=centers,dy=b.y-a.y,dz=b.z-a.z,distance=Math.max(Math.hypot(dy,dz),1e-6);
- const py=dz/distance,pz=-dy/distance,zy=dy/distance,zz=dz/distance;
+ const oy=orientationCenters[1].y-orientationCenters[0].y,oz=orientationCenters[1].z-orientationCenters[0].z;
+ const orientationLength=Math.max(Math.hypot(oy,oz),1e-6);
+ const py=oz/orientationLength,pz=-oy/orientationLength,zy=oy/orientationLength,zz=oz/orientationLength;
  const h=phase/2,w=.45,span=distance/2+radius;
  const across=radius*Math.sin(phase),along=span*Math.sin(h);
  const va=w*radius*Math.cos(phase),vl=w/2*span*Math.cos(h);

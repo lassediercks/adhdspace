@@ -126,8 +126,11 @@ function animate(){
  const beamObstacles=asteroids.asteroids.filter(body=>body.group.visible).map(body=>body.outline);
  const centers=network.centers(journey.distance);
  beams.forEach((beam,index)=>{
-  beam.core.visible=beam.rim.visible=beam.pick.visible=index<state.beamCount;
-  if(index<state.beamCount){
+  const opacity=index<state.beamCount?network.opacity(index,journey.distance):0;
+  beam.core.visible=beam.rim.visible=opacity>0;
+  beam.pick.visible=opacity>.05;
+  beam.core.material.opacity=opacity;beam.rim.material.opacity=.18*opacity;
+  if(opacity>0){
    beam.update(beamObstacles,centers[index],network.direction(index));
    beam.core.material.color.setHex(network.selected===null||network.selected===index?0xafffe4:0x688e82);
   }
@@ -221,7 +224,7 @@ function updateRescueControl(){
  button.title=navigation.cooldown>0?`Rescue recharging — ${remaining}s remaining`:navigation.fuel<RESCUE_FUEL?'Refuel at a station — rescue needs 8% fuel':navigation.mode==='derailed'?'Boost back to the primary beam (8% fuel)':'Available when beam lock is lost';
 }
 $('rescue').addEventListener('click',()=>{
- if(navigation.rescue()){network.choose(0);predictionDirty=true;updateRescueControl();}
+ if(navigation.rescue()){network.rescueToPrimary();predictionDirty=true;updateRescueControl();}
 });
 updateRescueControl();updateWeatherIndicator();updateFuelIndicator();
 const beamRaycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
@@ -230,7 +233,7 @@ function beamAtPointer(event){
  const rect=renderer.domElement.getBoundingClientRect();
  pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);
  beamRaycaster.setFromCamera(pointer,camera);
- return beamRaycaster.intersectObjects(beams.slice(0,state.beamCount).map(beam=>beam.pick),false)[0]?.object.userData.beamIndex;
+ return beamRaycaster.intersectObjects(beams.slice(0,state.beamCount).filter(beam=>beam.pick.visible).map(beam=>beam.pick),false)[0]?.object.userData.beamIndex;
 }
 renderer.domElement.addEventListener('pointerdown',event=>{pointerStart={x:event.clientX,y:event.clientY};});
 renderer.domElement.addEventListener('pointerup',event=>{
