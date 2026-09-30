@@ -27,3 +27,15 @@ test('blue requires docking eligibility, not merely intersecting a station on a 
  stable.navigation.mode='derailed';stable.instability=.95;
  assert.equal(forecastFlight(stable,1).willRefuel,true);
 });
+
+
+test('empty-fuel forecasts ignore stabilizer targets and retain momentum under gravity',()=>{
+ const input=snapshot(3.5,.9);
+ input.navigation.mode='derailed';input.navigation.lock=0;input.navigation.fuel=0;
+ input.bodies=[{id:0,kind:'asteroid',x:60,y:30,z:0,radius:4,mass:10,vx:-8}];
+ const narrow=forecastFlight({...input,targetRadius:0},8);
+ const wide=forecastFlight({...input,targetRadius:7},8);
+ assert.deepEqual(narrow.positions,wide.positions);
+ assert.equal(narrow.willRefuel,false);
+ assert.notDeepEqual([...narrow.positions.slice(0,3)],[...narrow.positions.slice(-3)]);
+});

@@ -22,8 +22,8 @@ export function beamScoreRate(position,beams) {
 
 export class FlightScore {
   constructor(){this.total=0;this.rate=0;}
-  advance(seconds,position,beams){
-    this.rate=beamScoreRate(position,beams);
+  advance(seconds,position,beams,hasFuel=true){
+    this.rate=hasFuel?beamScoreRate(position,beams):0;
     this.total+=Math.max(0,seconds)*this.rate;
   }
 }

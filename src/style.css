@@ -51,3 +51,9 @@
 #instability-panel #instability-output,#instability-level { color:var(--weather-color); }
 #instability-panel #weather-fill { background:var(--weather-color); transition:background .3s; }
 #instability-level { font-size:8px; letter-spacing:1px; }
+
+.out-of-fuel-notice { display:flex; flex-direction:column; align-items:center; gap:22px; }
+#restart-flight { pointer-events:auto; font-size:13px; padding:12px 24px; }
+.engine-lever input:disabled { opacity:.35; cursor:not-allowed; }
+.engine-lever input:disabled::-webkit-slider-thumb { cursor:not-allowed; }
+.engine-lever input:disabled::-moz-range-thumb { cursor:not-allowed; }

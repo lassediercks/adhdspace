@@ -32,3 +32,11 @@ test('points accumulate per real second independent of frame rate and are retain
  slow.advance(60,{x:0,y:30,z:0},[beam]);assert.equal(slow.total,before);assert.equal(slow.rate,0);
  slow.advance(0,origin,[beam]);assert.equal(slow.total,before);
 });
+
+
+test('an empty tank stops score accumulation even directly on a beam',()=>{
+ const score=new FlightScore();
+ score.advance(3,origin,[beam]);assert.equal(score.total,30);
+ score.advance(60,origin,[beam],false);assert.equal(score.total,30);assert.equal(score.rate,0);
+ score.advance(1,origin,[beam],true);assert.equal(score.total,40);
+});

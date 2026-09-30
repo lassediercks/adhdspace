@@ -113,7 +113,7 @@ function animate(){
  network.advance(state.elapsed/state.speed,journey.distance,dt);
  const beamCount=network.beams.length;
  if(beamCount!==state.beamCount){state.beamCount=beamCount;predictionDirty=true;}
- if(state.playing)currentRadius=smoothControl(currentRadius,state.radius,dt);
+ if(state.playing&&navigation.fuel>0)currentRadius=smoothControl(currentRadius,state.radius,dt);
  currentDual=THREE.MathUtils.damp(currentDual,state.beamCount-1,2,step);
  const r=currentRadius, a=state.phase;
  previousPosition.copy(ship.position);
@@ -150,7 +150,7 @@ function animate(){
  score.advance(state.playing?dt:0,ship.position,beams.slice(0,state.beamCount).map((beam,index)=>({
    center:centers[index],direction:network.direction(index),intervals:beam.intervals??[],
    opacity:network.opacity(index,journey.distance),
- })));
+ })),navigation.fuel>0);
  $('score-output').textContent=Math.floor(score.total).toLocaleString('en-US');
  $('score-rate').textContent=`+${score.rate.toFixed(1)} pts / s`;
 
@@ -177,7 +177,7 @@ function animate(){
     position:gravity.position,velocity:gravity.velocity,journey,navigation,network,bodies:asteroids.asteroids.map(body=>body.definition),
     flightSeconds:state.elapsed/state.speed,
     dual:currentDual,targetDual:state.beamCount-1,
-    phase:state.phase,radius:currentRadius,targetRadius:state.radius,
+    phase:state.phase,radius:currentRadius,targetRadius:navigation.fuel>0?state.radius:currentRadius,
     instability:currentInstability,targetInstability:currentInstability,speed:state.speed,
   },state.elapsed);
   predictionDirty=false;predictionCooldown=0;predictionBodies=bodySignature;
@@ -203,6 +203,7 @@ function syncCoherence(){
  $('coherence-output').textContent=`${state.coherence}%`;
 }
 $('coherence').addEventListener('input',()=>{
+ if(navigation.fuel<=0){syncCoherence();return;}
  state.coherence=Number($('coherence').value);state.radius=7*(1-state.coherence/100);
  predictionDirty=true;syncCoherence();
 });
@@ -219,6 +220,7 @@ function updateWeatherIndicator(){
  $('weather-fill').style.height=`${value}%`;
 }
 function updateFuelIndicator(){
+ $('coherence').disabled=navigation.fuel<=0;
  const value=Math.round(navigation.fuel);
  $('fuel-output').textContent=`${value}%`;
  $('fuel-meter').setAttribute('aria-valuenow',value);
@@ -240,6 +242,7 @@ function updateRescueControl(){
  button.textContent=remaining>0?`${label} · ${remaining}s`:label;
  button.title=navigation.cooldown>0?`Rescue recharging — ${remaining}s remaining`:navigation.fuel<RESCUE_FUEL?'Refuel at a station — rescue needs 8% fuel':navigation.mode==='derailed'?'Boost back to the primary beam (8% fuel)':'Available when beam lock is lost';
 }
+$('restart-flight').addEventListener('click',()=>window.location.reload());
 $('rescue').addEventListener('click',()=>{
  if(navigation.rescue()){network.rescueToPrimary();predictionDirty=true;updateRescueControl();}
 });

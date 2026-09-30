@@ -39,7 +39,7 @@ export function forecastFlight(snapshot, horizon=(snapshot.targetDual ? MULTI_BE
     network?.advance(flightSeconds??0,journey.distance,FORECAST_STEP/snapshot.speed);
     const targetDual=network?network.beams.length-1:flightSeconds===undefined?(snapshot.targetDual??0):scheduledBeamCount(flightSeconds)-1;
     dual=damp(dual,targetDual,2,FORECAST_STEP);
-    radius=smoothControl(radius,snapshot.targetRadius,FORECAST_STEP/snapshot.speed);
+    if(!navigation||navigation.fuel>0)radius=smoothControl(radius,snapshot.targetRadius,FORECAST_STEP/snapshot.speed);
     // Hold the observed field: future random weather is unknowable. A new
     // observation will revise this route on the next forecast refresh.
     if(navigation&&network)navigation.exposure=network.exposure(journey.distance);

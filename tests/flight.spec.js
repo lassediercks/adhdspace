@@ -91,11 +91,24 @@ test('engine consumption eases with the lever and empty fuel shows a central war
  await expect.poll(async()=>Number((await usage.textContent()).match(/[0-9.]+/)[0])).toBeLessThan(3);
  await page.reload();
  await expect(warning).toBeVisible({timeout:45000});
- await expect(warning).toHaveText('OUT OF FUEL');await expect(usage).toHaveText('−0.00% / s');
+ await expect(warning.locator('strong')).toHaveText('OUT OF FUEL');await expect(usage).toHaveText('−0.00% / s');
  await expect(page.locator('#refueling-notice')).toBeHidden();
  const box=await warning.boundingBox();
  expect(Math.abs(box.x+box.width/2-720)).toBeLessThan(2);
+ const lever=page.getByRole('slider',{name:'Stabilizer engines',exact:true});
+ await expect(lever).toBeDisabled();
+ const score=await page.locator('#score-output').textContent();
+ await expect(page.locator('#score-rate')).toHaveText('+0.0 pts / s');
+ // A stale/programmatic input event cannot change the exhausted engine setting.
+ await lever.evaluate(el=>{el.value='20';el.dispatchEvent(new Event('input',{bubbles:true}));});
+ await expect(lever).toHaveValue('100');
+ await page.waitForTimeout(1000);
+ await expect(page.locator('#score-output')).toHaveText(score);
  await page.screenshot({path:'test-results/out-of-fuel.png'});
+ await page.getByRole('button',{name:'Restart flight',exact:true}).click();
+ await expect(warning).toBeHidden();await expect(lever).toBeEnabled();await expect(lever).toHaveValue('100');
+ expect(Number((await page.locator('#score-output').textContent()).replaceAll(',',''))).toBeLessThan(15);
+ expect(Number((await page.locator('#fuel-output').textContent()).replace('%',''))).toBeGreaterThan(95);
 });
 
 
