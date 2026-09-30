@@ -35,10 +35,13 @@ export class Navigation {
     this.fuel=Math.max(0,this.fuel-dt*fuelBurnRate(radius));
     if(this.fuel===0&&this.mode==='tracking')this.mode='derailed';
     this.refueling=false;
-    for(const body of bodies) {
+    const stations=bodies.filter(body=>body.kind==='station'&&!this.consumedStations.includes(stationKey(body)))
+      .map(body=>({body,distance:Math.hypot(position.x-body.x,position.y-body.y,position.z-body.z)}))
+      .filter(({body,distance})=>distance<bodyClearance(body,radius)+10+(stationKey(body)===this.refuelKey?5:0))
+      .sort((a,b)=>Number(stationKey(b.body)===this.refuelKey)-Number(stationKey(a.body)===this.refuelKey)||a.distance-b.distance);
+    for(const {body,distance} of stations) {
       if(body.kind!=='station'||this.consumedStations.includes(stationKey(body)))continue;
-      const distance=Math.hypot(position.x-body.x,position.y-body.y,position.z-body.z);
-      const reach=bodyClearance(body,radius)+10;
+      const reach=bodyClearance(body,radius)+10+(stationKey(body)===this.refuelKey?5:0);
       // Low coherence is the pilot's deliberate opt-in to leave a beam here.
       if(this.mode==='tracking'&&this.immunity===0&&radius>=4.2&&distance<reach) {
         this.mode='derailed';this.stationId=body.id;

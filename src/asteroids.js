@@ -1,6 +1,6 @@
 import { stationKey } from './navigation.js';
 import * as THREE from 'three';
-import { advanceFlyby, spawnAsteroid, ASTEROID_COUNT } from './flyby-motion.js';
+import { advanceFlybyField, spawnAsteroid, ASTEROID_COUNT } from './flyby-motion.js';
 import { toonMaterial, facetedGeometry } from './toon-style.js';
 
 function asteroidGeometry(definition, seed) {
@@ -91,8 +91,9 @@ export class PassingAsteroids {
   update(dt, shipPosition = {x:0,y:0,z:0}, progressRate = 1, spinDt = dt, consumedStations = [], flightSeconds = 0, navigation = null, supplyCenter = shipPosition) {
     this.travel+=dt*8;
     this.sources.length=0;
-    this.asteroids.forEach(asteroid=>{
-      const source=advanceFlyby(asteroid.definition,dt,shipPosition,progressRate,flightSeconds,navigation,supplyCenter);
+    const field=advanceFlybyField(this.asteroids.map(body=>body.definition),dt,shipPosition,progressRate,flightSeconds,navigation,supplyCenter);
+    this.asteroids.forEach((asteroid,index)=>{
+      const source=field[index];
       if(source.generation!==asteroid.definition.generation)this.applySpawn(asteroid,source);
       asteroid.definition=source;
       asteroid.group.position.set(source.x,source.y,source.z);

@@ -6,7 +6,7 @@ import { smoothControl } from './flight-controls.js';
 import { flightRoute } from './flight-route.js';
 import { OrbitalGravity } from './orbital-gravity.js';
 import { Journey } from './journey.js';
-import { advanceFlyby, SUPPLY_STATION_DISTANCE } from './flyby-motion.js';
+import { advanceFlybyField, SUPPLY_STATION_DISTANCE } from './flyby-motion.js';
 
 export const FORECAST_STEP=1/30;
 export const FORECAST_SAMPLE_INTERVAL=2*FORECAST_STEP;
@@ -49,7 +49,7 @@ export function forecastFlight(snapshot, horizon=(snapshot.targetDual ? MULTI_BE
     const travel=journey.advance(FORECAST_STEP,physics.position,physics.velocity,bodies,instability,radius,navigation);
     physics.velocity.x+=8*(previousRate-journey.rate);
     const supplyCenter=network?.supplyCenter(physics.position,journey.distance+SUPPLY_STATION_DISTANCE*2.8/8)??{y:0,z:0};
-    bodies=bodies.map(body=>advanceFlyby(body,travel,physics.position,journey.rate,flightSeconds??0,navigation,supplyCenter));
+    bodies=advanceFlybyField(bodies,travel,physics.position,journey.rate,flightSeconds??0,navigation,supplyCenter);
     const sources=activeBodies(bodies,navigation);
     const body=journey.orbit&&sources.find(body=>body.id===journey.orbit.id);
     const route={phase,radius,dual,network,distance:journey.distance,forwardSpeed:journey.rate*2.8};

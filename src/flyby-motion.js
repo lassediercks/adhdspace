@@ -82,3 +82,25 @@ export function advanceFlyby(body, dt, shipPosition, progressRate, flightSeconds
   }
   return next;
 }
+
+// Keep docking/avoidance envelopes separate. Existing stations stay put;
+// only new arrivals are moved farther ahead before they become visible.
+export const MIN_STATION_SEPARATION=90;
+export function advanceFlybyField(bodies,dt,shipPosition,progressRate,flightSeconds=0,navigation=null,supplyCenter=shipPosition) {
+  const next=bodies.map(body=>advanceFlyby(body,dt,shipPosition,progressRate,flightSeconds,navigation,supplyCenter));
+  const active=body=>body.kind==='station'&&!navigation?.consumedStations?.includes(`${body.id}:${body.generation??0}`);
+  const arrivals=next.filter((body,index)=>active(body)
+    &&(body.generation!==bodies[index].generation||bodies[index].kind!=='station'));
+  const arrivalIds=new Set(arrivals.map(body=>body.id));
+  const placed=next.filter(body=>active(body)&&!arrivalIds.has(body.id));
+  // Prioritize the reliable supply slot when multiple stations spawn together.
+  arrivals.sort((a,b)=>Number(b.id===7)-Number(a.id===7)||a.id-b.id);
+  for(const station of arrivals){
+    while(placed.some(other=>Math.hypot(station.x-other.x,station.y-other.y,station.z-other.z)
+      <Math.max(MIN_STATION_SEPARATION,(station.avoidanceRadius??station.radius)+(other.avoidanceRadius??other.radius)+40))){
+      station.x+=MIN_STATION_SEPARATION;
+    }
+    placed.push(station);
+  }
+  return next;
+}
