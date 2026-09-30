@@ -91,3 +91,27 @@ test('triangle and square layouts render with coherence controls',async({page})=
  await page.screenshot({path:'test-results/square-beams.png'});
  expect(errors).toEqual([]);
 });
+
+
+test('refresh and restored form values stay synchronized with simulation defaults',async({page})=>{
+ await page.goto('http://127.0.0.1:5173');
+ const coherence=page.getByRole('slider',{name:'Coherence',exact:true});
+ const instability=page.getByRole('slider',{name:'Instability',exact:true});
+ await coherence.fill('100');await instability.fill('85');
+ await page.reload();
+ await expect(coherence).toHaveValue('43');await expect(instability).toHaveValue('0');
+ await expect(page.locator('#coherence-output')).toHaveText('43%');
+ await expect(page.locator('#instability-output')).toHaveText('0%');
+ expect(await coherence.evaluate(el=>el.style.getPropertyValue('--fill'))).toBe('43%');
+ expect(await instability.evaluate(el=>el.style.getPropertyValue('--fill'))).toBe('0%');
+ // Simulate values restored after module initialization without input events.
+ await page.evaluate(()=>{
+  document.getElementById('coherence').value='91';
+  document.getElementById('instability').value='72';
+  window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));
+ });
+ await expect(coherence).toHaveValue('43');await expect(instability).toHaveValue('0');
+ await coherence.fill('10');await instability.fill('70');
+ await page.getByRole('button',{name:'Reset flight',exact:true}).click();
+ await expect(coherence).toHaveValue('43');await expect(instability).toHaveValue('0');
+});

@@ -13,7 +13,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const $ = (id) => document.getElementById(id);
-const state = { playing: !matchMedia('(prefers-reduced-motion: reduce)').matches, speed: 1.5, radius: 4, instability: 0, phase: 1.05, elapsed: 0, trail: true, beamCount:1 };
+const DEFAULT_FLIGHT = Object.freeze({speed:1.5,coherence:43,radius:7*(1-43/100),instability:0,phase:1.05,elapsed:0,trail:true,beamCount:1});
+const state = {playing:!matchMedia('(prefers-reduced-motion: reduce)').matches,...DEFAULT_FLIGHT};
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -85,12 +86,12 @@ const journey = new Journey();
 const nominalPosition = new THREE.Vector3();
 const previousPosition = new THREE.Vector3();
 let currentInstability = 0;
-ship.position.set(0, Math.cos(state.phase) * 4, Math.sin(state.phase) * 4);
+ship.position.set(0, Math.cos(state.phase) * state.radius, Math.sin(state.phase) * state.radius);
 gravity.reset(ship.position, {x:0,y:-ship.position.z*.45,z:ship.position.y*.45});
 const direction=new THREE.Vector3(), shipAxis=new THREE.Vector3(1,0,0);
 const clock=new THREE.Clock();
 let currentDual=0;
-let currentRadius=4, cameraTransition=false;
+let currentRadius=state.radius, cameraTransition=false;
 function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.05);
@@ -163,15 +164,23 @@ function updatePlayback(){
 }
 $('play').addEventListener('click',()=>{state.playing=!state.playing;updatePlayback();});
 function updateSlider(input){input.style.setProperty('--fill',`${(input.value-input.min)/(input.max-input.min)*100}%`);}
+function syncSliders(){
+ for(const id of ['coherence','instability']) {
+  const input=$(id);input.value=state[id];
+  updateSlider(input);$(`${id}-output`).textContent=`${state[id]}%`;
+ }
+}
 for(const id of ['coherence','instability']){
- const input=$(id);updateSlider(input);
- input.addEventListener('input',()=>{
-  predictionDirty=true;
-  const value=Number(input.value);
-  if(id==='coherence')state.radius=7*(1-value/100);else state.instability=value;
-  updateSlider(input);$(`${id}-output`).textContent=`${value}%`;
+ $(id).addEventListener('input',()=>{
+  predictionDirty=true;state[id]=Number($(id).value);
+  if(id==='coherence')state.radius=7*(1-state.coherence/100);
+  syncSliders();
  });
 }
+// Browsers can restore form values independently of a fresh simulation.
+// Reconcile on startup and pageshow (including back/forward cache restores).
+syncSliders();
+window.addEventListener('pageshow',syncSliders);
 controls.addEventListener('start',()=>{cameraTransition=false;});
 function updateBeamControls(){
  $('beam-count').textContent=state.beamCount;
@@ -184,7 +193,15 @@ for(const [id,delta] of [['remove-beam',-1],['add-beam',1]])$(id).addEventListen
 });
 updateBeamControls();
 $('trail').addEventListener('click',()=>{state.trail=!state.trail;trailGroup.visible=state.trail;$('trail').setAttribute('aria-checked',state.trail);});
-function reset(){backdrop.reset();currentDual=0;state.beamCount=1;updateBeamControls();predictionDirty=true;journey.reset();flownTrail.clear();recordedTrail.clear();gravity.reset();asteroids.reset();currentInstability=0;Object.assign(state,{speed:1.5,radius:4,instability:0,phase:1.05,elapsed:0,trail:true});currentRadius=4;ship.position.set(0,Math.cos(state.phase)*4,Math.sin(state.phase)*4);gravity.reset(ship.position,{x:0,y:-ship.position.z*.45,z:ship.position.y*.45});trailGroup.visible=true;$('trail').setAttribute('aria-checked','true');for(const id of ['coherence','instability']){const value=id==='coherence'?Math.round(100*(1-state.radius/7)):state.instability;$(id).value=value;updateSlider($(id));$(`${id}-output`).textContent=`${value}%`;}cameraTransition=true;updatePlayback();}
+function reset(){
+ Object.assign(state,DEFAULT_FLIGHT);
+ currentDual=0;currentInstability=0;currentRadius=state.radius;predictionDirty=true;
+ backdrop.reset();journey.reset();flownTrail.clear();recordedTrail.clear();asteroids.reset();
+ ship.position.set(0,Math.cos(state.phase)*state.radius,Math.sin(state.phase)*state.radius);
+ gravity.reset(ship.position,{x:0,y:-ship.position.z*.45,z:ship.position.y*.45});
+ trailGroup.visible=true;$('trail').setAttribute('aria-checked','true');
+ syncSliders();updateBeamControls();cameraTransition=true;updatePlayback();
+}
 $('reset').addEventListener('click',reset);
 $('info-button').addEventListener('click',()=>$('info-dialog').showModal());
 $('close-info').addEventListener('click',()=>$('info-dialog').close());

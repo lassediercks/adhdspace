@@ -77,7 +77,7 @@ Deployment follows the [Vite GitHub Pages guide](https://vite.dev/guide/static-d
 
 Use **+ / −** for 1–10 parallel beams. Three form an equilateral triangle, four a square, and 5–10 form regular polygons when viewed along the beam direction. Adjacent beams stay 8 scene units apart, independent of coherence. The first beam remains anchored at the origin. Two beams retain the figure eight; larger layouts orbit each vertex and smoothly transfer to the next, including the closing edge. Changes steer the ship toward the new route. Reset restores one beam.
 
-**Coherence** controls the orbit width: 0% means radius 7; 100% means radius 0. At 100%, the ship still transfers smoothly between active beams without looping around them. With one beam, it flies straight along it. The original radius-4 default displays as 43%, rounded to a whole percent.
+**Coherence** controls the orbit width: 0% means radius 7; 100% means radius 0. At 100%, the ship still transfers smoothly between active beams without looping around them. With one beam, it flies straight along it. The default is 43% coherence (radius 3.99) and 0% instability. Refresh and reset synchronize the slider thumbs, labels, and physics to these same defaults.
 
 The mint beams, soft blue forecast, and amber recorded trail are visually distinct. The recorded trail retains the entire session without aging or distance fade; reset/reload clears it. Append-only rendering chunks keep old points intact without rewriting the full trail every frame. Distant history can leave the camera's view, but is not deleted.
 
